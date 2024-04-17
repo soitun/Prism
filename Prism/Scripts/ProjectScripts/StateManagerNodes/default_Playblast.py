@@ -112,18 +112,7 @@ class PlayblastClass(object):
         if stateData is not None:
             self.loadData(stateData)
         else:
-            context = self.getCurrentContext()
-            if context.get("type") == "asset":
-                self.setRangeType("Single Frame")
-            elif context.get("type") == "shot":
-                self.setRangeType("Shot")
-            elif self.stateManager.standalone:
-                self.setRangeType("Custom")
-            else:
-                self.setRangeType("Scene")
-
-            if context.get("task"):
-                self.setTaskname(context.get("task"))
+            self.initializeContextBasedSettings()
 
     @err_catcher(name=__name__)
     def loadData(self, data):
@@ -219,7 +208,7 @@ class PlayblastClass(object):
         self.sp_resHeight.editingFinished.connect(self.stateManager.saveStatesToScene)
         self.b_resPresets.clicked.connect(self.showResPresets)
         self.cb_master.activated.connect(self.stateManager.saveStatesToScene)
-        self.cb_location.activated[str].connect(self.stateManager.saveStatesToScene)
+        self.cb_location.activated.connect(self.stateManager.saveStatesToScene)
         self.cb_formats.activated.connect(self.stateManager.saveStatesToScene)
         self.gb_submit.toggled.connect(self.rjToggled)
         self.cb_manager.activated.connect(self.managerChanged)
@@ -233,6 +222,21 @@ class PlayblastClass(object):
             self.stateManager.saveStatesToScene
         )
         self.b_pathLast.clicked.connect(self.showLastPathMenu)
+
+    @err_catcher(name=__name__)
+    def initializeContextBasedSettings(self):
+        context = self.getCurrentContext()
+        if context.get("type") == "asset":
+            self.setRangeType("Single Frame")
+        elif context.get("type") == "shot":
+            self.setRangeType("Shot")
+        elif self.stateManager.standalone:
+            self.setRangeType("Custom")
+        else:
+            self.setRangeType("Scene")
+
+        if context.get("task"):
+            self.setTaskname(context.get("task"))
 
     @err_catcher(name=__name__)
     def showLastPathMenu(self):

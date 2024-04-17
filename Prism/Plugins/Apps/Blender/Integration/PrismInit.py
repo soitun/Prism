@@ -85,7 +85,7 @@ def sceneOpen(dummy):
 
 class PrismSave(bpy.types.Operator):
     bl_idname = "object.prism_save"
-    bl_label = "Save"
+    bl_label = "Save Version"
 
     def execute(self, context):
         if platform.system() == "Linux":

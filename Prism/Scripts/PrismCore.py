@@ -168,7 +168,7 @@ class PrismCore:
 
         try:
             # set some general variables
-            self.version = "v2.0.0"
+            self.version = "v2.0.4"
             self.requiredLibraries = "v2.0.0"
             self.core = self
             self.preferredExtension = os.getenv("PRISM_CONFIG_EXTENSION", ".json")
@@ -886,6 +886,11 @@ class PrismCore:
             win.setWindowFlags(win.windowFlags() | Qt.WindowStaysOnTopHint)
 
     @err_catcher(name=__name__)
+    def tr(self, text):
+        return text
+        # return QApplication.translate("", text)
+
+    @err_catcher(name=__name__)
     def changeProject(self, *args, **kwargs):
         return self.projects.changeProject(*args, **kwargs)
 
@@ -1181,6 +1186,8 @@ License: GNU LGPL-3.0-or-later<br>
                 return False
 
             self.dv = DependencyViewer.DependencyViewer(core=self, depRoot=depRoot)
+        else:
+            self.dv.setRoot(depRoot)
 
         if modal:
             self.dv.exec_()
@@ -1443,7 +1450,6 @@ License: GNU LGPL-3.0-or-later<br>
     @err_catcher(name=__name__)
     def validateStr(self, text, allowChars=None, denyChars=None):
         invalidChars = [
-            " ",
             "\\",
             "/",
             ":",
@@ -1453,10 +1459,6 @@ License: GNU LGPL-3.0-or-later<br>
             "<",
             ">",
             "|",
-            "ä",
-            "ö",
-            "ü",
-            "ß",
         ]
         if allowChars:
             for i in allowChars:
@@ -1480,12 +1482,12 @@ License: GNU LGPL-3.0-or-later<br>
         if pVersion == 2:
             validText = "".join(
                 ch if ch not in invalidChars else fallbackChar
-                for ch in str(text.encode("ascii", errors="ignore"))
+                for ch in str(text.encode("utf8", errors="ignore"))
             )
         else:
             validText = "".join(
                 ch if ch not in invalidChars else fallbackChar
-                for ch in str(text.encode("ascii", errors="ignore").decode())
+                for ch in str(text.encode("utf8", errors="ignore").decode())
             )
 
         return validText
@@ -2449,7 +2451,6 @@ License: GNU LGPL-3.0-or-later<br>
             logger.warning("failed to load winreg: %s" % e)
             return
 
-        import shlex
         try:
             with _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FileExts\{}\UserChoice'.format(ext)) as key:
                 progid = _winreg.QueryValueEx(key, 'ProgId')[0]
@@ -2467,8 +2468,8 @@ License: GNU LGPL-3.0-or-later<br>
 
         if path:
             path = os.path.expandvars(path)
-            path = shlex.split(path, posix=False)[0]
-            path = path.strip('"')
+            data = [d.strip() for d in path.split("\"") if d]
+            path = data[0] if data else path
 
         return path
 
@@ -2498,9 +2499,9 @@ License: GNU LGPL-3.0-or-later<br>
 
         for plugin in self.core.unloadedAppPlugins.values():
             if ext in plugin.sceneFormats:
-                override = self.getExecutableOverride(plugin.pluginName)
-                if override:
-                    appPath = override
+                exoverride = self.getExecutableOverride(plugin.pluginName)
+                if exoverride:
+                    appPath = exoverride
 
                 fileStarted = getattr(
                     plugin, "customizeExecutable", lambda x1, x2, x3: False
@@ -2516,16 +2517,21 @@ License: GNU LGPL-3.0-or-later<br>
             else:
                 args.append(appPath)
 
+            args[0] = os.path.expandvars(args[0])
             args.append(self.core.fixPath(filepath))
             logger.debug("starting DCC with args: %s" % args)
             try:
                 subprocess.Popen(args, env=self.startEnv)
             except:
-                if os.path.isfile(args[0]):
-                    msg = "Could not execute file:\n\n%s\n\nUsed arguments: %s" % (traceback.format_exc(), args)
+                mods = QApplication.keyboardModifiers()
+                if mods == Qt.ControlModifier:
+                    if os.path.isfile(args[0]):
+                        msg = "Could not execute file:\n\n%s\n\nUsed arguments: %s" % (traceback.format_exc(), args)
+                    else:
+                        msg = "Executable doesn't exist:\n\n%s\n\nCheck your executable override in the Prism User Settings." % args[0]
+                    self.core.popup(msg)
                 else:
-                    msg = "Executable doesn't exist:\n\n%s\n\nCheck your executable override in the Prism User Settings." % args[0]
-                self.core.popup(msg)
+                    subprocess.Popen(" ".join(args), env=self.startEnv, shell=True)
 
             fileStarted = True
 
@@ -3088,6 +3094,9 @@ License: GNU LGPL-3.0-or-later<br>
         else:
             pythonPath = "python"
 
+        if pythonPath.startswith("//"):
+            pythonPath = "\\\\" + pythonPath[2:]
+
         return pythonPath
 
     @err_catcher(name=__name__)
@@ -3400,7 +3409,9 @@ License: GNU LGPL-3.0-or-later<br>
             if not self.msg:
                 self.createPopup()
 
-            if self.core.uiAvailable:
+            qapp = QApplication.instance()
+            isGuiThread = qapp and qapp.thread() == QThread.currentThread()
+            if self.core.uiAvailable and isGuiThread:
                 for button in self.msg.buttons():
                     button.setVisible(self.allowCancel)
 
@@ -4051,6 +4062,11 @@ def create(app="Standalone", prismArgs=None):
     if not qapp:
         QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
         qapp = QApplication(sys.argv)
+
+        # translator = QTranslator(qapp)
+        # path = os.path.join(os.path.dirname(__file__), "UserInterfacesPrism/translations/en.qm")
+        # translator.load(path)
+        # qapp.installTranslator(translator)
 
     iconPath = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),

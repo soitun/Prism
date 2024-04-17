@@ -1,133 +1,183 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'ExternalTask.ui'
-#
-# Created: Tue Mar  7 10:10:40 2023
-#      by: qtpy-uic 2.0.5
-#
-# WARNING! All changes made in this file will be lost!
+################################################################################
+## Form generated from reading UI file 'ExternalTask.ui'
+##
+## Created by: Qt User Interface Compiler version 6.4.2
+##
+## WARNING! All changes made in this file will be lost when recompiling UI file!
+################################################################################
 
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import *  # type: ignore
+from qtpy.QtGui import *  # type: ignore
+from qtpy.QtWidgets import *  # type: ignore
 
 class Ui_dlg_ExternalTask(object):
     def setupUi(self, dlg_ExternalTask):
-        dlg_ExternalTask.setObjectName("dlg_ExternalTask")
+        if not dlg_ExternalTask.objectName():
+            dlg_ExternalTask.setObjectName(u"dlg_ExternalTask")
         dlg_ExternalTask.resize(708, 185)
-        self.verticalLayout = QtWidgets.QVBoxLayout(dlg_ExternalTask)
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.widget = QtWidgets.QWidget(dlg_ExternalTask)
-        self.widget.setObjectName("widget")
-        self.horizontalLayout_5 = QtWidgets.QHBoxLayout(self.widget)
+        self.verticalLayout = QVBoxLayout(dlg_ExternalTask)
+        self.verticalLayout.setObjectName(u"verticalLayout")
+        self.widget = QWidget(dlg_ExternalTask)
+        self.widget.setObjectName(u"widget")
+        self.horizontalLayout_5 = QHBoxLayout(self.widget)
         self.horizontalLayout_5.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_5.setObjectName("horizontalLayout_5")
-        self.widget_2 = QtWidgets.QWidget(self.widget)
-        self.widget_2.setObjectName("widget_2")
-        self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.widget_2)
+        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
+        self.widget_2 = QWidget(self.widget)
+        self.widget_2.setObjectName(u"widget_2")
+        self.verticalLayout_3 = QVBoxLayout(self.widget_2)
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_3.setObjectName("verticalLayout_3")
-        self.label_2 = QtWidgets.QLabel(self.widget_2)
-        self.label_2.setObjectName("label_2")
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.label_2 = QLabel(self.widget_2)
+        self.label_2.setObjectName(u"label_2")
+
         self.verticalLayout_3.addWidget(self.label_2)
-        self.label = QtWidgets.QLabel(self.widget_2)
-        self.label.setObjectName("label")
+
+        self.label = QLabel(self.widget_2)
+        self.label.setObjectName(u"label")
+
         self.verticalLayout_3.addWidget(self.label)
+
+
         self.horizontalLayout_5.addWidget(self.widget_2)
-        self.widget_4 = QtWidgets.QWidget(self.widget)
-        self.widget_4.setObjectName("widget_4")
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.widget_4)
+
+        self.widget_4 = QWidget(self.widget)
+        self.widget_4.setObjectName(u"widget_4")
+        self.verticalLayout_2 = QVBoxLayout(self.widget_4)
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.widget_3 = QtWidgets.QWidget(self.widget_4)
-        self.widget_3.setObjectName("widget_3")
-        self.horizontalLayout_3 = QtWidgets.QHBoxLayout(self.widget_3)
+        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
+        self.widget_3 = QWidget(self.widget_4)
+        self.widget_3.setObjectName(u"widget_3")
+        self.horizontalLayout_3 = QHBoxLayout(self.widget_3)
         self.horizontalLayout_3.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.w_taskName = QtWidgets.QWidget(self.widget_3)
-        self.w_taskName.setObjectName("w_taskName")
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.w_taskName)
-        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.e_taskName = QtWidgets.QLineEdit(self.w_taskName)
-        self.e_taskName.setObjectName("e_taskName")
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.w_taskName = QWidget(self.widget_3)
+        self.w_taskName.setObjectName(u"w_taskName")
+        self.horizontalLayout_2 = QHBoxLayout(self.w_taskName)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.e_taskName = QLineEdit(self.w_taskName)
+        self.e_taskName.setObjectName(u"e_taskName")
+
         self.horizontalLayout_2.addWidget(self.e_taskName)
+
+
         self.horizontalLayout_3.addWidget(self.w_taskName)
-        self.w_versionName = QtWidgets.QWidget(self.widget_3)
-        self.w_versionName.setObjectName("w_versionName")
-        self.horizontalLayout_4 = QtWidgets.QHBoxLayout(self.w_versionName)
-        self.horizontalLayout_4.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
-        self.label_3 = QtWidgets.QLabel(self.w_versionName)
-        self.label_3.setObjectName("label_3")
+
+        self.w_versionName = QWidget(self.widget_3)
+        self.w_versionName.setObjectName(u"w_versionName")
+        self.horizontalLayout_4 = QHBoxLayout(self.w_versionName)
+        self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
+        self.label_3 = QLabel(self.w_versionName)
+        self.label_3.setObjectName(u"label_3")
+
         self.horizontalLayout_4.addWidget(self.label_3)
-        self.e_versionName = QtWidgets.QLineEdit(self.w_versionName)
-        self.e_versionName.setObjectName("e_versionName")
+
+        self.e_versionName = QLineEdit(self.w_versionName)
+        self.e_versionName.setObjectName(u"e_versionName")
+
         self.horizontalLayout_4.addWidget(self.e_versionName)
+
+
         self.horizontalLayout_3.addWidget(self.w_versionName)
+
+
         self.verticalLayout_2.addWidget(self.widget_3)
-        self.w_taskPath = QtWidgets.QWidget(self.widget_4)
-        self.w_taskPath.setObjectName("w_taskPath")
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.w_taskPath)
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.e_taskPath = QtWidgets.QLineEdit(self.w_taskPath)
-        self.e_taskPath.setObjectName("e_taskPath")
+
+        self.w_taskPath = QWidget(self.widget_4)
+        self.w_taskPath.setObjectName(u"w_taskPath")
+        self.horizontalLayout = QHBoxLayout(self.w_taskPath)
+        self.horizontalLayout.setObjectName(u"horizontalLayout")
+        self.e_taskPath = QLineEdit(self.w_taskPath)
+        self.e_taskPath.setObjectName(u"e_taskPath")
+
         self.horizontalLayout.addWidget(self.e_taskPath)
-        self.b_browseFile = QtWidgets.QPushButton(self.w_taskPath)
-        self.b_browseFile.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.b_browseFile.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.b_browseFile.setObjectName("b_browseFile")
+
+        self.b_browseFile = QPushButton(self.w_taskPath)
+        self.b_browseFile.setObjectName(u"b_browseFile")
+        self.b_browseFile.setFocusPolicy(Qt.NoFocus)
+        self.b_browseFile.setContextMenuPolicy(Qt.CustomContextMenu)
+
         self.horizontalLayout.addWidget(self.b_browseFile)
-        self.b_browseFolder = QtWidgets.QPushButton(self.w_taskPath)
-        self.b_browseFolder.setFocusPolicy(QtCore.Qt.NoFocus)
-        self.b_browseFolder.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.b_browseFolder.setObjectName("b_browseFolder")
+
+        self.b_browseFolder = QPushButton(self.w_taskPath)
+        self.b_browseFolder.setObjectName(u"b_browseFolder")
+        self.b_browseFolder.setFocusPolicy(Qt.NoFocus)
+        self.b_browseFolder.setContextMenuPolicy(Qt.CustomContextMenu)
+
         self.horizontalLayout.addWidget(self.b_browseFolder)
+
+
         self.verticalLayout_2.addWidget(self.w_taskPath)
+
+
         self.horizontalLayout_5.addWidget(self.widget_4)
+
+
         self.verticalLayout.addWidget(self.widget)
-        self.widget_5 = QtWidgets.QWidget(dlg_ExternalTask)
-        self.widget_5.setObjectName("widget_5")
-        self.horizontalLayout_6 = QtWidgets.QHBoxLayout(self.widget_5)
+
+        self.widget_5 = QWidget(dlg_ExternalTask)
+        self.widget_5.setObjectName(u"widget_5")
+        self.horizontalLayout_6 = QHBoxLayout(self.widget_5)
         self.horizontalLayout_6.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_6.setObjectName("horizontalLayout_6")
-        self.label_4 = QtWidgets.QLabel(self.widget_5)
-        self.label_4.setObjectName("label_4")
+        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
+        self.label_4 = QLabel(self.widget_5)
+        self.label_4.setObjectName(u"label_4")
+
         self.horizontalLayout_6.addWidget(self.label_4)
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
-        self.horizontalLayout_6.addItem(spacerItem)
-        self.rb_copy = QtWidgets.QRadioButton(self.widget_5)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.horizontalLayout_6.addItem(self.horizontalSpacer)
+
+        self.rb_copy = QRadioButton(self.widget_5)
+        self.rb_copy.setObjectName(u"rb_copy")
         self.rb_copy.setChecked(True)
-        self.rb_copy.setObjectName("rb_copy")
+
         self.horizontalLayout_6.addWidget(self.rb_copy)
-        self.rb_move = QtWidgets.QRadioButton(self.widget_5)
-        self.rb_move.setObjectName("rb_move")
+
+        self.rb_move = QRadioButton(self.widget_5)
+        self.rb_move.setObjectName(u"rb_move")
+
         self.horizontalLayout_6.addWidget(self.rb_move)
-        self.rb_link = QtWidgets.QRadioButton(self.widget_5)
-        self.rb_link.setObjectName("rb_link")
+
+        self.rb_link = QRadioButton(self.widget_5)
+        self.rb_link.setObjectName(u"rb_link")
+
         self.horizontalLayout_6.addWidget(self.rb_link)
+
+
         self.verticalLayout.addWidget(self.widget_5)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem1)
-        self.buttonBox = QtWidgets.QDialogButtonBox(dlg_ExternalTask)
-        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
-        self.buttonBox.setObjectName("buttonBox")
+
+        self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        self.verticalLayout.addItem(self.verticalSpacer)
+
+        self.buttonBox = QDialogButtonBox(dlg_ExternalTask)
+        self.buttonBox.setObjectName(u"buttonBox")
+        self.buttonBox.setOrientation(Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
+
         self.verticalLayout.addWidget(self.buttonBox)
 
+
         self.retranslateUi(dlg_ExternalTask)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), dlg_ExternalTask.accept)
-        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), dlg_ExternalTask.reject)
-        QtCore.QMetaObject.connectSlotsByName(dlg_ExternalTask)
+        self.buttonBox.accepted.connect(dlg_ExternalTask.accept)
+        self.buttonBox.rejected.connect(dlg_ExternalTask.reject)
+
+        QMetaObject.connectSlotsByName(dlg_ExternalTask)
+    # setupUi
 
     def retranslateUi(self, dlg_ExternalTask):
-        dlg_ExternalTask.setWindowTitle(QtWidgets.QApplication.translate("", "Add external media", None, -1))
-        self.label_2.setText(QtWidgets.QApplication.translate("", "Identifier:", None, -1))
-        self.label.setText(QtWidgets.QApplication.translate("", "External path:", None, -1))
-        self.label_3.setText(QtWidgets.QApplication.translate("", "Versionname:", None, -1))
-        self.b_browseFile.setText(QtWidgets.QApplication.translate("", "...(file)", None, -1))
-        self.b_browseFolder.setText(QtWidgets.QApplication.translate("", "...(folder)", None, -1))
-        self.label_4.setText(QtWidgets.QApplication.translate("", "Action:", None, -1))
-        self.rb_copy.setText(QtWidgets.QApplication.translate("", "Copy", None, -1))
-        self.rb_move.setText(QtWidgets.QApplication.translate("", "Move", None, -1))
-        self.rb_link.setText(QtWidgets.QApplication.translate("", "Link", None, -1))
+        dlg_ExternalTask.setWindowTitle(QCoreApplication.translate("dlg_ExternalTask", u"Add external media", None))
+        self.label_2.setText(QCoreApplication.translate("dlg_ExternalTask", u"Identifier:", None))
+        self.label.setText(QCoreApplication.translate("dlg_ExternalTask", u"External path:", None))
+        self.label_3.setText(QCoreApplication.translate("dlg_ExternalTask", u"Versionname:", None))
+        self.b_browseFile.setText(QCoreApplication.translate("dlg_ExternalTask", u"...(file)", None))
+        self.b_browseFolder.setText(QCoreApplication.translate("dlg_ExternalTask", u"...(folder)", None))
+        self.label_4.setText(QCoreApplication.translate("dlg_ExternalTask", u"Action:", None))
+        self.rb_copy.setText(QCoreApplication.translate("dlg_ExternalTask", u"Copy", None))
+        self.rb_move.setText(QCoreApplication.translate("dlg_ExternalTask", u"Move", None))
+        self.rb_link.setText(QCoreApplication.translate("dlg_ExternalTask", u"Link", None))
+    # retranslateUi
 

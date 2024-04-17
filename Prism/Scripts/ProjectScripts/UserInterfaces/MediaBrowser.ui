@@ -47,13 +47,24 @@
         </widget>
        </item>
        <item>
-        <widget class="QListWidget" name="lw_task">
+        <widget class="QTreeWidget" name="tw_identifier">
          <property name="contextMenuPolicy">
           <enum>Qt::CustomContextMenu</enum>
          </property>
          <property name="selectionMode">
           <enum>QAbstractItemView::ExtendedSelection</enum>
          </property>
+         <property name="indentation">
+          <number>10</number>
+         </property>
+         <attribute name="headerVisible">
+          <bool>false</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string notr="true">1</string>
+          </property>
+         </column>
         </widget>
        </item>
        <item>

@@ -40,6 +40,7 @@ import shutil
 import glob
 import errno
 import time
+import copy
 
 from qtpy.QtCore import *
 from qtpy.QtGui import *
@@ -222,8 +223,6 @@ class MediaProducts(object):
                     versions.append(locVersion)
                     continue
 
-                break
-
         return versions
 
     @err_catcher(name=__name__)
@@ -255,21 +254,47 @@ class MediaProducts(object):
         return versionData
 
     @err_catcher(name=__name__)
-    def getVersionsFromContext(self, context, keys=None):
+    def getVersionsFromContext(self, context, keys=None, locations=None):
+        locationData = self.core.paths.getRenderProductBasePaths()
+        searchLocations = []
+        for locData in locationData:
+            if not locations or locData in locations or "all" in locations:
+                searchLocations.append(locData)
+
         if context.get("mediaType") == "playblasts":
             key = "playblastVersions"
         else:
             key = "renderVersions"
 
-        template = self.core.projects.getResolvedProjectStructurePath(
-            key, context=context
-        )
-        versionData = self.core.projects.getMatchingPaths(template)
         versions = []
-        for data in versionData:
-            d = context.copy()
-            d.update(data)
-            versions.append(d)
+        for loc in searchLocations:
+            ctx = context.copy()
+            ctx["project_path"] = locationData[loc]
+            templates = self.core.projects.getResolvedProjectStructurePaths(
+                key, context=ctx
+            )
+            versionData = []
+            for template in templates:
+                versionData += self.core.projects.getMatchingPaths(template)
+
+            for data in versionData:
+                c = copy.deepcopy(context)
+                c.update(data)
+                if self.core.products.getIntVersionFromVersionName(c["version"]) is None and c["version"] != "master":
+                    continue
+
+                c["paths"] = [data.get("path")]
+                c["locations"] = {loc: data.get("path", "")}
+
+                for version in versions:
+                    if version.get("version") == c.get("version"):
+                        version["paths"].append(c.get("path"))
+                        version["locations"].update(c.get("locations"))
+                        break
+                else:
+                    versions.append(c)
+                    continue
+
         return versions
 
     @err_catcher(name=__name__)
@@ -288,10 +313,27 @@ class MediaProducts(object):
             return []
 
         key = "aovs"
-        template = self.core.projects.getResolvedProjectStructurePath(
-            key, context=version
-        )
-        aovData = self.core.projects.getMatchingPaths(template)
+
+        aovData = []
+        if version.get("locations"):
+            locations = self.core.paths.getRenderProductBasePaths()
+            for loc in version["locations"]:
+                ctx = version.copy()
+                if loc not in locations:
+                    continue
+
+                ctx["project_path"] = locations[loc]
+                template = self.core.projects.getResolvedProjectStructurePath(
+                    key, context=ctx
+                )
+                aovData += self.core.projects.getMatchingPaths(template)
+
+        else:
+            template = self.core.projects.getResolvedProjectStructurePath(
+                key, context=version
+            )
+            aovData = self.core.projects.getMatchingPaths(template)
+
         aovs = []
         for data in aovData:
             if not os.path.isdir(data["path"]):
@@ -323,26 +365,39 @@ class MediaProducts(object):
             else:
                 return []
 
-        template = self.core.projects.getResolvedProjectStructurePath(
-            key, context=context
-        )
-        folder = os.path.dirname(template)
-        if not os.path.isdir(folder):
-            logger.warning("folder doesn't exist: %s" % folder)
-            return []
-
-        files = []
-        if context.get("source"):
-            globPath = os.path.join(folder, context["source"].replace("#", "?"))
-            files = glob.glob(globPath)
+        folders = []
+        if context.get("locations"):
+            locations = self.core.paths.getRenderProductBasePaths()
+            for loc in context["locations"]:
+                ctx = context.copy()
+                ctx["project_path"] = locations[loc]
+                template = self.core.projects.getResolvedProjectStructurePath(
+                    key, context=ctx
+                )
+                folders.append(os.path.dirname(template))
 
         else:
-            for root, folders, files in os.walk(folder):
-                break
+            template = self.core.projects.getResolvedProjectStructurePath(
+                key, context=context
+            )
+            folders = [os.path.dirname(template)]
 
         filepaths = []
-        for file in files:
-            filepaths.append(os.path.join(folder, file))
+        for folder in folders:
+            if not os.path.isdir(folder):
+                logger.warning("folder doesn't exist: %s" % folder)
+                continue
+
+            if context.get("source"):
+                globPath = os.path.join(folder, context["source"].replace("#", "?"))
+                files = glob.glob(globPath)
+
+            else:
+                for root, folders, files in os.walk(folder):
+                    break
+
+            for file in files:
+                filepaths.append(os.path.join(folder, file))
 
         return filepaths
 
@@ -799,6 +854,25 @@ class MediaProducts(object):
         return data
 
     @err_catcher(name=__name__)
+    def getMediaDataFromVersionFolder(self, path, mediaType="3drenders"):
+        entityType = self.core.paths.getEntityTypeFromPath(path)
+        key = "renderVersions"
+        context = {"type": entityType}
+        context["mediaType"] = mediaType
+        location = self.getLocationFromPath(path)
+        if location:
+            context["project_path"] = self.core.paths.getRenderProductBasePaths()[location]
+
+        template = self.core.projects.getResolvedProjectStructurePath(key, context=context)
+        context = {"entityType": entityType, "project_path": context["project_path"]}
+        data = self.core.projects.extractKeysFromPath(path, template, context=context)
+        data["type"] = entityType
+        if "asset_path" in data:
+            data["asset"] = os.path.basename(data["asset_path"])
+
+        return data
+
+    @err_catcher(name=__name__)
     def getLocationFromPath(self, path):
         locDict = self.core.paths.getRenderProductBasePaths()
         nPath = os.path.normpath(path)
@@ -953,7 +1027,7 @@ class MediaProducts(object):
     @err_catcher(name=__name__)
     def getMasterVersionLabel(self, path):
         versionName = "master"
-        versionData = self.core.paths.getRenderProductData(path, validateModTime=True)
+        versionData = self.core.paths.getRenderProductData(path, validateModTime=True, isVersionFolder=True)
         if "versionpaths" in versionData:
             versions = []
             context = versionData.copy()

@@ -1270,6 +1270,9 @@ QGroupBox::indicator:checked {
             exportStates = []
             appStates = getattr(self.core.appPlugin, "sm_createStatePressed", lambda x, y: [])(self, stateType)
             if not isinstance(appStates, list):
+                if appStates is None:
+                    return
+
                 self.createState(appStates["stateType"], parent=parent, setActive=True, **appStates.get("kwargs", {}))
                 return
 
@@ -1324,6 +1327,10 @@ QGroupBox::indicator:checked {
                 self.core.popup(msgStr)
                 self.saveEnabled = True
                 return False
+
+            if self.core.getConfig("globals", "productTasks", config="project"):
+                fnameData["department"] = os.getenv("PRISM_SHOTCAM_DEPARTMENT", "Layout")
+                fnameData["task"] = os.getenv("PRISM_SHOTCAM_TASK", "Cameras")
 
             filepath = self.core.products.getLatestVersionpathFromProduct(
                 "_ShotCam", entity=fnameData
@@ -2034,7 +2041,7 @@ QGroupBox::indicator:checked {
             i = self.core.fixPath(i)
 
             if not (
-                i.startswith(self.core.projectPath)
+                i.lower().startswith(self.core.projectPath.lower())
                 or (
                     self.core.useLocalFiles and i.startswith(self.core.localProjectPath)
                 )

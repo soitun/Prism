@@ -237,6 +237,149 @@ class Prism_Maya_Functions(object):
             sys.path.append(scriptPath)
 
     @err_catcher(name=__name__)
+    def onShelfClickedImport(self):
+        sm = self.core.getStateManager()
+        state = sm.createState(
+            "ImportFile",
+            setActive=True,
+            openProductsBrowser=True,
+        )
+
+        return state
+
+    @err_catcher(name=__name__)
+    def onShelfClickedExport(self, doubleclick=False):
+        sm = self.core.getStateManager()
+        if not sm:
+            return
+
+        if not self.core.fileInPipeline():
+            self.core.showFileNotInProjectWarning(title="Warning")
+            return False
+
+        for state in sm.states:
+            if state.ui.className == "Export" and state.ui.e_name.text() == "Default Export ({product})":
+                break
+        else:
+            parent = self.getDftStateParent()
+            state = sm.createState("Export", stateData={"stateName": "Default Export ({product})"}, parent=parent)
+            if not state:
+                msg = "Failed to create export state. Please contact the support."
+                self.core.popup(msg)
+                return
+
+            state.ui.initializeContextBasedSettings()
+
+        if hasattr(self, "dlg_export"):
+            self.dlg_export.showSm = False
+            self.dlg_export.close()
+
+        self.dlg_export = ExporterDlg(self, state)
+        if doubleclick:
+            state.ui.clearItems()
+            state.ui.addObjects()
+            self.dlg_export.submit(openOnFail=False)
+        else:
+            state.ui.w_name.setVisible(False)
+            state.ui.gb_previous.setVisible(False)
+            self.dlg_export.show()
+
+    @err_catcher(name=__name__)
+    def onShelfClickedPlayblast(self, doubleclick=False):
+        sm = self.core.getStateManager()
+        if not sm:
+            return
+
+        if not self.core.fileInPipeline():
+            self.core.showFileNotInProjectWarning(title="Warning")
+            return False
+
+        for state in sm.states:
+            if state.ui.className == "Playblast" and state.ui.e_name.text() == "Default Playblast ({identifier})":
+                break
+        else:
+            parent = self.getDftStateParent()
+            state = sm.createState("Playblast", stateData={"stateName": "Default Playblast ({identifier})"}, parent=parent)
+            if not state:
+                msg = "Failed to create playblast state. Please contact the support."
+                self.core.popup(msg)
+                return
+
+            state.ui.initializeContextBasedSettings()
+
+        if hasattr(self, "dlg_playblast"):
+            self.dlg_playblast.showSm = False
+            self.dlg_playblast.close()
+
+        self.dlg_playblast = PlayblastDlg(self, state)
+        if doubleclick:
+            self.dlg_playblast.submit(openOnFail=False)
+        else:
+            state.ui.w_name.setVisible(False)
+            state.ui.gb_previous.setVisible(False)
+            self.dlg_playblast.show()
+
+    @err_catcher(name=__name__)
+    def onShelfClickedRender(self, doubleclick=False):
+        sm = self.core.getStateManager()
+        if not sm:
+            return
+
+        if not self.core.fileInPipeline():
+            self.core.showFileNotInProjectWarning(title="Warning")
+            return False
+
+        for state in sm.states:
+            if state.ui.className == "ImageRender" and state.ui.e_name.text() == "Default ImageRender - {identifier}":
+                break
+        else:
+            parent = self.getDftStateParent()
+            state = sm.createState("ImageRender", stateData={"stateName": "Default ImageRender - {identifier}"}, parent=parent)
+            if not state:
+                msg = "Failed to create render state. Please contact the support."
+                self.core.popup(msg)
+                return
+
+            state.ui.initializeContextBasedSettings()
+
+        if hasattr(self, "dlg_render"):
+            self.dlg_render.showSm = False
+            self.dlg_render.close()
+
+        self.dlg_render = RenderDlg(self, state)
+        if doubleclick:
+            self.dlg_render.submit(openOnFail=False)
+        else:
+            state.ui.f_name.setVisible(False)
+            state.ui.gb_previous.setVisible(False)
+            self.dlg_render.show()
+
+    @err_catcher(name=__name__)
+    def getDftStateParent(self, create=True):
+        sm = self.core.getStateManager()
+        if not sm:
+            return
+
+        for state in sm.states:
+            if state.ui.listType != "Export" or state.ui.className != "Folder":
+                continue
+
+            if state.ui.e_name.text() != "Default States":
+                continue
+
+            return state
+
+        if create:
+            stateData = {
+                "statename": "Default States",
+                "listtype": "Export",
+                "stateenabled": "PySide2.QtCore.Qt.CheckState.Checked",
+                "stateexpanded": False,
+            }
+            state = sm.createState("Folder", stateData=stateData)
+            return state
+
+    @err_catcher(name=__name__)
     def setMayaProject(self, path=None, default=False):
         if default:
             base = QDir.homePath()
@@ -328,9 +471,12 @@ class Prism_Maya_Functions(object):
         cmds.file(rename=filepath)
 
         try:
-            return cmds.file(save=True, type=sType)
+            result = cmds.file(save=True, type=sType)
         except:
             return False
+        else:
+            mel.eval("addRecentFile(\"%s\", \"%s\");" % (filepath, sType))
+            return result
 
     @err_catcher(name=__name__)
     def getImportPaths(self, origin):
@@ -444,6 +590,13 @@ class Prism_Maya_Functions(object):
                 cmds.file(filepath, o=True, force=True)
         except:
             pass
+        else:
+            if os.path.splitext(filepath)[1] == ".mb":
+                sType = "mayaBinary"
+            else:
+                sType = "mayaAscii"
+
+            mel.eval("addRecentFile(\"%s\", \"%s\");" % (filepath, sType))
 
         return True
 
@@ -1002,6 +1155,39 @@ class Prism_Maya_Functions(object):
                 )
 
             outputName = outputName.replace("####", format(endFrame, "04"))
+        elif expType == ".ass":
+            cmds.select(expNodes)
+            opt = ""
+            if startFrame != endFrame:
+                opt = "-startFrame %s;-endFrame %s;-frameStep 1;" % (startFrame, endFrame)
+
+            opt += "-boundingBox;-fullPath;-lightLinks 1;-shadowLinks 1;-mask 6399"
+
+            outputName = os.path.splitext(outputName)[0] + ".ass"
+            pr = origin.chb_preserveReferences.isChecked()
+
+            if origin.chb_wholeScene.isChecked():
+                cmds.file(
+                    outputName,
+                    force=True,
+                    exportAll=True,
+                    type="ASS Export",
+                    preserveReferences=pr,
+                    options=opt,
+                )
+            else:
+                cmds.file(
+                    outputName,
+                    force=True,
+                    exportSelected=True,
+                    type="ASS Export",
+                    preserveReferences=pr,
+                    options=opt,
+                )
+
+            base, ext = os.path.splitext(outputName)
+            if startFrame != endFrame:
+                outputName = base + "." + format(endFrame, "04") + ext
 
         return outputName
 
@@ -1126,8 +1312,9 @@ class Prism_Maya_Functions(object):
         origin.w_deleteUnknownNodes.setVisible(exportScene)
         origin.w_deleteDisplayLayers.setVisible(exportScene)
 
-        preserveReferences = idx in [".ma", ".mb", ".rs"]
+        preserveReferences = idx in [".ma", ".mb", ".rs", ".ass"]
         origin.w_preserveReferences.setVisible(preserveReferences)
+        origin.w_preserveReferences.setEnabled(not exportScene or not origin.chb_importReferences.isChecked())
 
     @err_catcher(name=__name__)
     def sm_export_preExecute(self, origin, startFrame, endFrame):
@@ -2330,17 +2517,31 @@ print( "READY FOR INPUT\\n" )
                     refDlg = QDialog()
 
                     refDlg.setWindowTitle("Create Reference")
-                    rb_reference = QRadioButton("Create reference")
+                    rb_reference = QRadioButton("Create Reference")
                     rb_reference.setChecked(mode == "reference")
-                    rb_import = QRadioButton("Import objects only")
+                    rb_import = QRadioButton("Import Objects Only")
                     rb_reference.setChecked(mode == "import")
-                    rb_applyCache = QRadioButton("Apply as cache to selected objects")
-                    rb_gpuCache = QRadioButton("Load as GPU cache")
+                    rb_applyCache = QRadioButton("Apply As Cache")
+                    w_caches = QWidget()
+                    lo_caches = QVBoxLayout(w_caches)
+                    lo_caches.setContentsMargins(20, 9, 9, 9)
+                    rb_applyCacheSelection = QRadioButton("To Selection")
+                    rb_applyCacheEntity = QRadioButton("To Asset")
+                    w_applyCacheEntities = QWidget()
+                    lo_applyCacheEntities = QHBoxLayout(w_applyCacheEntities)
+                    lo_applyCacheEntities.setContentsMargins(20, 0, 0, 0)
+                    cb_cacheEntities = QComboBox()
+                    lo_applyCacheEntities.addWidget(cb_cacheEntities)
+                    lo_applyCacheEntities.addStretch()
+                    lo_caches.addWidget(rb_applyCacheSelection)
+                    lo_caches.addWidget(rb_applyCacheEntity)
+                    lo_caches.addWidget(w_applyCacheEntities)
+                    rb_gpuCache = QRadioButton("Load As GPU Cache")
                     rb_reference.setChecked(mode == "applyCache")
                     w_namespace = QWidget()
                     nLayout = QHBoxLayout()
                     nLayout.setContentsMargins(0, 15, 0, 0)
-                    chb_namespace = QCheckBox("Create namespace")
+                    chb_namespace = QCheckBox("Create Namespace")
                     chb_namespace.setChecked(useNamespace)
                     e_namespace = QLineEdit()
                     e_namespace.setText(namespace)
@@ -2350,10 +2551,44 @@ print( "READY FOR INPUT\\n" )
                     chb_namespace.toggled.connect(lambda x: e_namespace.setEnabled(x))
                     w_namespace.setLayout(nLayout)
 
+                    w_caches.setEnabled(False)
+                    w_applyCacheEntities.setEnabled(False)
+                    entities = []
+                    for state in self.core.getStateManager().states:
+                        if state.ui.className == "ImportFile":
+                            entity = None
+                            cacheData = self.core.paths.getCachePathData(state.ui.getImportPath())
+                            if cacheData.get("type") == "asset":
+                                entity = os.path.basename(cacheData.get("asset_path", ""))
+                            elif cacheData.get("type") == "shot":
+                                shotName = self.core.entities.getShotName(cacheData)
+                                if shotName:
+                                    entity = shotName
+
+                            if entity:
+                                entities.append({"entityName": entity, "stateName": state.text(0), "state": state})
+
+                    for entity in entities:
+                        name = entity["entityName"]
+                        if len([x["entityName"] for x in entities if x["entityName"] == name]) > 1:
+                            name = entity["stateName"]
+
+                        cb_cacheEntities.addItem(name, entity)
+
                     rb_applyCache.toggled.connect(
                         lambda x: w_namespace.setEnabled(not x)
                     )
-                    if fileName[1] != ".abc" or len(cmds.ls(selection=True)) == 0:
+                    rb_applyCache.toggled.connect(
+                        lambda x: w_caches.setEnabled(x)
+                    )
+                    rb_applyCacheEntity.toggled.connect(
+                        lambda x: w_applyCacheEntities.setEnabled(x)
+                    )
+
+                    rb_applyCacheSelection.setChecked(True)
+                    rb_applyCacheEntity.setChecked(len(cmds.ls(selection=True)) == 0 and cb_cacheEntities.count())
+
+                    if fileName[1] != ".abc":
                         rb_applyCache.setEnabled(False)
 
                     rb_gpuCache.toggled.connect(lambda x: w_namespace.setEnabled(not x))
@@ -2371,6 +2606,7 @@ print( "READY FOR INPUT\\n" )
                     bLayout.addWidget(rb_reference)
                     bLayout.addWidget(rb_import)
                     bLayout.addWidget(rb_applyCache)
+                    bLayout.addWidget(w_caches)
                     bLayout.addWidget(rb_gpuCache)
                     bLayout.addWidget(w_namespace)
                     bLayout.addWidget(bb_warn)
@@ -2388,6 +2624,7 @@ print( "READY FOR INPUT\\n" )
                     else:
                         doRef = rb_reference.isChecked()
                         applyCache = rb_applyCache.isChecked()
+                        applyCacheTarget = "selection" if rb_applyCacheSelection.isChecked() else cb_cacheEntities.currentData()
                         doGpuCache = rb_gpuCache.isChecked()
                         if chb_namespace.isChecked():
                             nSpace = e_namespace.text()
@@ -2524,14 +2761,51 @@ print( "READY FOR INPUT\\n" )
                     nSpace = fileName[0]
 
                 if applyCache:
-                    if update:
-                        cmds.select(origin.setName)
-                    cmds.AbcImport(
-                        impFileName,
-                        mode="import",
-                        connect=" ".join(cmds.ls(selection=True, long=True)),
-                    )
-                    importedNodes = cmds.ls(selection=True, long=True)
+                    objs = None
+                    if applyCacheTarget == "selection":
+                        if len(cmds.ls(selection=True)) == 0:
+                            self.core.popup("No objects selected.")
+                            return {"result": "canceled", "doImport": doImport}
+                        else:
+                            if update:
+                                cmds.select(origin.setName)
+                            objs = cmds.ls(selection=True, long=True)
+                    elif applyCacheTarget:
+                        prevSel = cmds.ls(selection=True, long=True)
+                        cmds.select(clear=True)
+                        try:
+                            # the nodes in the set need to be selected to get their long dag path
+                            cmds.select(applyCacheTarget["state"].ui.nodes)
+                        except:
+                            pass
+
+                        objs = cmds.ls(selection=True, long=True)
+                        try:
+                            cmds.select(prevSel)
+                        except:
+                            pass
+
+                    if objs:
+                        newObjs = []
+                        for obj in objs:
+                            if cmds.objectType(obj) == "reference":
+                                newObjs += cmds.referenceQuery(obj, nodes=True)
+                            else:
+                                newObjs.append(obj)
+
+                        objs = newObjs
+                        print(objs)
+                        cmds.AbcImport(
+                            impFileName,
+                            mode="import",
+                            connect=" ".join(objs),
+                        )
+                        importedNodes = objs
+                    else:
+                        msg = "Invalid entity selected."
+                        self.core.popup(msg)
+                        return {"result": "canceled", "doImport": doImport}
+
                 else:
                     importedNodes = cmds.file(
                         impFileName,
@@ -2596,6 +2870,7 @@ print( "READY FOR INPUT\\n" )
                     "i": True,
                     "returnNewNodes": True,
                     "importFunction": self.basicImport,
+                    "settings": settings,
                 }
 
                 if fileName[1] in self.importHandlers:
@@ -2651,6 +2926,7 @@ print( "READY FOR INPUT\\n" )
     @err_catcher(name=__name__)
     def basicImport(self, filepath, kwargs):
         del kwargs["importFunction"]
+        del kwargs["settings"]
         try:
             importedNodes = cmds.file(filepath, **kwargs)
         except Exception as e:
@@ -3090,6 +3366,17 @@ Show only polygon objects and image planes in viewport.
         elif not hasattr(cmds, "rsProxy") and ".rs" in self.plugin.outputFormats:
             self.plugin.outputFormats.pop(self.plugin.outputFormats.index(".rs"))
 
+        try:
+            import arnold
+            arnoldAvailable = True
+        except:
+            arnoldAvailable = False
+
+        if arnoldAvailable and ".ass" not in self.plugin.outputFormats:
+            self.plugin.outputFormats.insert(-1, ".ass")
+        elif not arnoldAvailable and ".ass" in self.plugin.outputFormats:
+            self.plugin.outputFormats.pop(self.plugin.outputFormats.index(".ass"))
+
         if not self.core.smCallbacksRegistered:
             import maya.OpenMaya as api
 
@@ -3145,7 +3432,7 @@ Show only polygon objects and image planes in viewport.
 
         prjPath = os.path.join(prjPath, "untitled")
         extFiles = []
-        for path in cmds.file(query=True, list=True):
+        for path in cmds.file(query=True, list=True, withoutCopyNumber=True):
             if not path:
                 continue
 
@@ -3190,3 +3477,243 @@ Show only polygon objects and image planes in viewport.
         import maya.app.renderSetup.views.renderSetupPreferences as prefs
 
         prefs.setDefaultPreset()
+
+
+class ExporterDlg(QDialog):
+    def __init__(self, origin, state):
+        super(ExporterDlg, self).__init__()
+        self.origin = origin
+        self.plugin = self.origin.plugin
+        self.core = self.plugin.core
+        self.core.parentWindow(self)
+        self.state = state
+        self.showSm = False
+        if self.core.sm.isVisible():
+            self.core.sm.setHidden(True)
+            self.showSm = True
+
+        self.setupUi()
+
+    @err_catcher(name=__name__)
+    def sizeHint(self):
+        hint = super(ExporterDlg, self).sizeHint()
+        hint += QSize(100, 0)
+        return hint
+
+    @err_catcher(name=__name__)
+    def setupUi(self):
+        self.setWindowTitle("Prism - Export")
+        self.lo_main = QVBoxLayout()
+        self.setLayout(self.lo_main)
+        self.lo_main.addWidget(self.state.ui)
+
+        self.b_submit = QPushButton("Export")
+        self.lo_main.addWidget(self.b_submit)
+        self.b_submit.clicked.connect(self.submit)
+
+    @err_catcher(name=__name__)
+    def closeEvent(self, event):
+        curItem = self.core.sm.getCurrentItem(self.core.sm.activeList)
+        if self.state and curItem and id(self.state) == id(curItem):
+            self.core.sm.showState()
+
+        if self.showSm:
+            self.core.sm.setHidden(False)
+
+        event.accept()
+
+    @err_catcher(name=__name__)
+    def submit(self, openOnFail=True):
+        self.hide()
+
+        sanityChecks = True
+        version = None
+        saveScene = False
+        incrementScene = False
+
+        sm = self.core.getStateManager()
+        result = sm.publish(
+            successPopup=False,
+            executeState=True,
+            states=[self.state],
+            useVersion=version,
+            saveScene=saveScene,
+            incrementScene=incrementScene,
+            sanityChecks=sanityChecks,
+            versionWarning=False,
+        )
+        if result:
+            msg = "Export completed successfully."
+            result = self.core.popupQuestion(msg, buttons=["Open in Product Browser", "Open in Explorer", "Close"], icon=QMessageBox.Information)
+            path = self.state.ui.l_pathLast.text()
+            if result == "Open in Product Browser":
+                self.core.projectBrowser()
+                self.core.pb.showTab("Products")
+                data = self.core.paths.getCachePathData(path)
+                self.core.pb.productBrowser.navigateToProduct(data["product"], entity=data)
+            elif result == "Open in Explorer":
+                self.core.openFolder(path)
+
+            self.close()
+        elif openOnFail:
+            self.show()
+
+
+class PlayblastDlg(QDialog):
+    def __init__(self, origin, state):
+        super(PlayblastDlg, self).__init__()
+        self.origin = origin
+        self.plugin = self.origin.plugin
+        self.core = self.plugin.core
+        self.core.parentWindow(self)
+        self.state = state
+        self.showSm = False
+        if self.core.sm.isVisible():
+            self.core.sm.setHidden(True)
+            self.showSm = True
+
+        self.setupUi()
+
+    @err_catcher(name=__name__)
+    def sizeHint(self):
+        hint = super(PlayblastDlg, self).sizeHint()
+        hint += QSize(100, 0)
+        return hint
+
+    @err_catcher(name=__name__)
+    def setupUi(self):
+        self.setWindowTitle("Prism - Playblast")
+        self.lo_main = QVBoxLayout()
+        self.setLayout(self.lo_main)
+        self.lo_main.addWidget(self.state.ui)
+
+        self.b_submit = QPushButton("Playblast")
+        self.lo_main.addWidget(self.b_submit)
+        self.b_submit.clicked.connect(self.submit)
+
+    @err_catcher(name=__name__)
+    def closeEvent(self, event):
+        curItem = self.core.sm.getCurrentItem(self.core.sm.activeList)
+        if self.state and curItem and id(self.state) == id(curItem):
+            self.core.sm.showState()
+
+        if self.showSm:
+            self.core.sm.setHidden(False)
+
+        event.accept()
+
+    @err_catcher(name=__name__)
+    def submit(self, openOnFail=True):
+        self.hide()
+
+        sanityChecks = True
+        version = None
+        saveScene = False
+        incrementScene = False
+
+        sm = self.core.getStateManager()
+        result = sm.publish(
+            successPopup=False,
+            executeState=True,
+            states=[self.state],
+            useVersion=version,
+            saveScene=saveScene,
+            incrementScene=incrementScene,
+            sanityChecks=sanityChecks,
+            versionWarning=False,
+        )
+        if result:
+            msg = "Playblast completed successfully."
+            result = self.core.popupQuestion(msg, buttons=["Open in Media Browser", "Open in Explorer", "Close"], icon=QMessageBox.Information)
+            path = self.state.ui.l_pathLast.text()
+            if result == "Open in Media Browser":
+                self.core.projectBrowser()
+                self.core.pb.showTab("Media")
+                data = self.core.paths.getPlayblastProductData(path)
+                self.core.pb.mediaBrowser.showRender(entity=data, identifier=data.get("identifier") + " (playblast)", version=data.get("version"))
+            elif result == "Open in Explorer":
+                self.core.openFolder(path)
+
+            self.close()
+        elif openOnFail:
+            self.show()
+
+
+class RenderDlg(QDialog):
+    def __init__(self, origin, state):
+        super(RenderDlg, self).__init__()
+        self.origin = origin
+        self.plugin = self.origin.plugin
+        self.core = self.plugin.core
+        self.core.parentWindow(self)
+        self.state = state
+        self.showSm = False
+        if self.core.sm.isVisible():
+            self.core.sm.setHidden(True)
+            self.showSm = True
+
+        self.setupUi()
+
+    @err_catcher(name=__name__)
+    def sizeHint(self):
+        hint = super(RenderDlg, self).sizeHint()
+        hint += QSize(100, 0)
+        return hint
+
+    @err_catcher(name=__name__)
+    def setupUi(self):
+        self.setWindowTitle("Prism - Render")
+        self.lo_main = QVBoxLayout()
+        self.setLayout(self.lo_main)
+        self.lo_main.addWidget(self.state.ui)
+
+        self.b_submit = QPushButton("Render")
+        self.lo_main.addWidget(self.b_submit)
+        self.b_submit.clicked.connect(self.submit)
+
+    @err_catcher(name=__name__)
+    def closeEvent(self, event):
+        curItem = self.core.sm.getCurrentItem(self.core.sm.activeList)
+        if self.state and curItem and id(self.state) == id(curItem):
+            self.core.sm.showState()
+
+        if self.showSm:
+            self.core.sm.setHidden(False)
+
+        event.accept()
+
+    @err_catcher(name=__name__)
+    def submit(self, openOnFail=True):
+        self.hide()
+
+        sanityChecks = True
+        version = None
+        saveScene = False
+        incrementScene = False
+
+        sm = self.core.getStateManager()
+        result = sm.publish(
+            successPopup=False,
+            executeState=True,
+            states=[self.state],
+            useVersion=version,
+            saveScene=saveScene,
+            incrementScene=incrementScene,
+            sanityChecks=sanityChecks,
+            versionWarning=False,
+        )
+        if result:
+            msg = "Render completed successfully."
+            result = self.core.popupQuestion(msg, buttons=["Open in Media Browser", "Open in Explorer", "Close"], icon=QMessageBox.Information)
+            path = self.state.ui.l_pathLast.text()
+            if result == "Open in Media Browser":
+                self.core.projectBrowser()
+                self.core.pb.showTab("Media")
+                data = self.core.paths.getRenderProductData(path)
+                self.core.pb.mediaBrowser.showRender(entity=data, identifier=data.get("identifier"), version=data.get("version"))
+            elif result == "Open in Explorer":
+                self.core.openFolder(path)
+
+            self.close()
+        elif openOnFail:
+            self.show()

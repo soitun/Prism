@@ -122,6 +122,7 @@ class Prism_Houdini_Functions(object):
             }
         ]
         self.registerCallbacks()
+        logging.getLogger("whoosh").setLevel(logging.WARNING)
 
     @err_catcher(name=__name__)
     def registerCallbacks(self):
@@ -869,7 +870,8 @@ class Prism_Houdini_Functions(object):
                 path = "$PRISM_JOB/" + os.path.relpath(path, self.core.projectPath)
         except ValueError as e:
             logger.warning(str(e) + " - path: %s - start: %s" % (path, self.core.projectPath))
-        
+
+        path = path.replace("\\", "/")
         return path
 
     @err_catcher(name=__name__)
@@ -1517,9 +1519,26 @@ class Prism_Houdini_Functions(object):
         stateCategories = []
         if stateType == "Render":
             renderers = self.getRendererPlugins()
-            if len(hou.selectedNodes()) > 0:
+            validNodes = [n for n in hou.selectedNodes() if origin.stateTypes["ImageRender"].isConnectableNode(n)]
+            if len(validNodes) > 1:
+                for node in hou.selectedNodes():
+                    curSel = origin.getCurrentItem(origin.activeList)
+                    if (
+                        origin.activeList == origin.tw_export
+                        and curSel is not None
+                        and curSel.ui.className == "Folder"
+                    ):
+                        parent = curSel
+                    else:
+                        parent = None
+
+                    origin.createState("ImageRender", parent=parent, setActive=True, node=node)
+
+                return
+
+            if len(validNodes) > 0:
                 for i in renderers:
-                    if hou.selectedNodes()[0].type().name() in i.ropNames:
+                    if validNodes[0].type().name() in i.ropNames:
                         stateData = {"label": "Render", "stateType": "ImageRender"}
                         return stateData
 
@@ -1847,7 +1866,7 @@ class Prism_Houdini_Functions(object):
         return node
 
     @err_catcher(name=__name__)
-    def getStateFromNode(self, kwargs, create=True):
+    def getStateFromNode(self, kwargs, create=True, ignoreTypes=None):
         sm = self.core.getStateManager()
         if not sm:
             return
@@ -1858,6 +1877,9 @@ class Prism_Houdini_Functions(object):
             node = getattr(state.ui, "node", None)
             if not self.isNodeValid(None, node):
                 node = None
+
+            if ignoreTypes and state.ui.className in ignoreTypes:
+                continue
 
             if node and node.path() == knode.path():
                 return state

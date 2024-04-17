@@ -248,20 +248,27 @@ class SanityChecks(object):
 
         pFps = self.core.getConfig("globals", "fps", configPath=self.core.prismIni)
 
+        fileName = self.core.getCurrentFileName()
+        entity = self.core.getScenefileData(fileName)
+        metaData = self.core.entities.getMetaData(entity)
+        fpsDef = "project"
+
+        if "fps" in metaData:
+            fpsDef = "entity"
+            pFps = metaData["fps"]["value"]
+
         if pFps is None:
             return
 
         pFps = float(pFps)
-
         curFps = self.core.getFPS()
-
         if pFps == curFps or curFps is None:
             return
 
-        vInfo = [["FPS of current scene:", str(curFps)], ["FPS of project", str(pFps)]]
+        vInfo = [["FPS of current scene:", str(curFps)], ["FPS of %s" % fpsDef, str(pFps)]]
         lay_info = QGridLayout()
 
-        msgString = "The FPS of the current scene doesn't match the FPS of the project:"
+        msgString = "The FPS of the current scene doesn't match the FPS of the %s:" % pFps
 
         for idx, val in enumerate(vInfo):
             l_infoName = QLabel(val[0] + ":\t")
@@ -283,7 +290,7 @@ class SanityChecks(object):
         msg = self.core.popupQuestion(
             msgString,
             title="FPS mismatch",
-            buttons=["Set project FPS in current scene", "Skip"],
+            buttons=["Set %s FPS in current scene" % fpsDef, "Skip"],
             widget=w_info,
             escapeButton="Skip",
             default="Skip",
@@ -296,7 +303,7 @@ class SanityChecks(object):
     @err_catcher(name=__name__)
     def onCheckFpsClicked(self, button, projectFps):
         result = button.text()
-        if result == "Set project FPS in current scene":
+        if result == "Set project FPS in current scene" or result == "Set entity FPS in current scene":
             self.core.appPlugin.setFPS(self.core, float(projectFps))
 
     @err_catcher(name=__name__)
@@ -310,26 +317,50 @@ class SanityChecks(object):
         if not self.core.fileInPipeline():
             return
 
+        fileName = self.core.getCurrentFileName()
+        entity = self.core.getScenefileData(fileName)
+        metaData = self.core.entities.getMetaData(entity)
+        resDef = "project"
         pRes = self.core.getConfig(
             "globals", "resolution", configPath=self.core.prismIni
         )
 
-        if not pRes:
+        resX = None
+        resY = None
+        if pRes:
+            resX = pRes[0]
+            resY = pRes[1]
+
+        if "resolution_x" in metaData:
+            resDef = "entity"
+            try:
+                resX = int(metaData["resolution_x"]["value"])
+            except:
+                pass
+
+        if "resolution_y" in metaData:
+            resDef = "entity"
+            try:
+                resY = int(metaData["resolution_y"]["value"])
+            except:
+                pass
+
+        if not resX or not resY:
             return
 
         curRes = self.core.getResolution()
         if not curRes:
             return
 
-        if list(pRes) == curRes:
+        if [resX, resY] == curRes:
             return
 
         vInfo = [
             ["Resolution of current scene:", "%s x %s" % (curRes[0], curRes[1])],
-            ["Resolution of project", "%s x %s" % (pRes[0], pRes[1])],
+            ["Resolution of %s" % resDef, "%s x %s" % (resX, resY)],
         ]
         lay_info = QGridLayout()
-        msgString = "The resolution of the current scene doesn't match the resolution of the project:"
+        msgString = "The resolution of the current scene doesn't match the resolution of the %s:" % resDef
 
         for idx, val in enumerate(vInfo):
             l_infoName = QLabel(val[0] + ":\t")
@@ -351,20 +382,20 @@ class SanityChecks(object):
         msg = self.core.popupQuestion(
             msgString,
             title="Resolution mismatch",
-            buttons=["Set project resolution in current scene", "Skip"],
+            buttons=["Set %s resolution in current scene" % resDef, "Skip"],
             widget=w_info,
             escapeButton="Skip",
             default="Skip",
             doExec=False,
         )
         if not self.core.isStr(msg):
-            msg.buttonClicked.connect(lambda x: self.onCheckResolutionClicked(x, pRes))
+            msg.buttonClicked.connect(lambda x: self.onCheckResolutionClicked(x, [resX, resY]))
             msg.show()
 
     @err_catcher(name=__name__)
     def onCheckResolutionClicked(self, button, projectResolution):
         result = button.text()
-        if result == "Set project resolution in current scene":
+        if result == "Set project resolution in current scene" or result == "Set entity resolution in current scene":
             self.core.appPlugin.setResolution(*projectResolution)
 
     @err_catcher(name=__name__)

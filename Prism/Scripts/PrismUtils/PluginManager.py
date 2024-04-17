@@ -341,6 +341,9 @@ class PluginManager(object):
                             if pDir == self.core.appPlugin.pluginName:
                                 continue
 
+                            if pDir.startswith(".") or pDir.startswith("_"):
+                                continue
+
                             path = os.path.join(dr, pDir)
                             foundPluginPaths.append(path)
                         break
@@ -1183,9 +1186,14 @@ class PluginManager(object):
         functionId = functionInfo["id"]
         origClass = functionInfo["class"]
 
-        if functionId in self.monkeyPatchedFunctions:
+        if self.isFunctionMonkeyPatched(orig):
             if force:
-                self.core.plugins.unmonkeyPatchFunction(self.monkeyPatchedFunctions[functionId])
+                patch = self.getFunctionPatch(orig)
+                orig = patch["orig"]
+                functionInfo = self.getFunctionInfo(orig)
+                functionId = functionInfo["id"]
+                origClass = functionInfo["class"]
+                self.core.plugins.unmonkeyPatchFunction(patch)
                 logger.debug("replacing existing monkeypatch for %s" % functionId)
             else:
                 if not quiet:
@@ -1261,7 +1269,7 @@ class PluginManager(object):
                     if patch["plugin"].pluginName == pref:
                         return patch["new"]
 
-        return patches[0]["orig"] if patches else None
+        return patches[0] if patches else None
 
     @err_catcher(name=__name__)
     def callUnpatchedFunction(self, function, *args, **kwargs):
@@ -1270,7 +1278,7 @@ class PluginManager(object):
             if "preferredPatchers" in kwargs:
                 del kwargs["preferredPatchers"]
 
-            return patch(*args, **kwargs)
+            return patch["orig"](*args, **kwargs)
         else:
             mid = self.getFunctionInfo(function)["id"]
             logger.debug("failed to call unpatched function for: %s" % mid)

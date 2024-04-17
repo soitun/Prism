@@ -287,8 +287,23 @@ class PathManager(object):
 
             cacheData.update(pathData)
 
-        if "_" in cacheData.get("version", "") and len(cacheData["version"].split("_")) == 2:
+        if "_" in (cacheData.get("version") or "") and len(cacheData["version"].split("_")) == 2:
             cacheData["version"], cacheData["wedge"] = cacheData["version"].split("_")
+
+        cacheData["locations"] = {}
+        loc = self.core.paths.getLocationFromPath(os.path.normpath(cachePath))
+        if len(self.core.paths.getExportProductBasePaths()) > 1:
+            globalPath = self.core.convertPath(os.path.normpath(cacheDir), "global")
+            if os.path.exists(os.path.normpath(globalPath)):
+                cacheData["locations"]["global"] = globalPath
+
+        if self.core.useLocalFiles:
+            localPath = self.core.convertPath(os.path.normpath(cacheDir), "local")
+            if os.path.exists(localPath):
+                cacheData["locations"]["local"] = localPath
+
+        if loc and loc not in ["global", "local"]:
+            cacheData["locations"][loc] = cachePath
 
         return cacheData
 
@@ -300,7 +315,7 @@ class PathManager(object):
             return self.getRenderProductData(productPath, isFilepath=isFilepath, addPathData=addPathData, mediaType=mediaType, validateModTime=validateModTime)
 
     @err_catcher(name=__name__)
-    def getRenderProductData(self, productPath, isFilepath=True, addPathData=True, mediaType="3drenders", validateModTime=False):
+    def getRenderProductData(self, productPath, isFilepath=True, addPathData=True, mediaType="3drenders", validateModTime=False, isVersionFolder=False):
         productPath = os.path.normpath(productPath)
         if os.path.splitext(productPath)[1]:
             productConfig = self.core.mediaProducts.getMediaVersionInfoPathFromFilepath(productPath, mediaType=mediaType)
@@ -317,23 +332,27 @@ class PathManager(object):
 
         productData = self.core.getConfig(configPath=productConfig) or {}
         if addPathData:
-            pathData = self.core.mediaProducts.getRenderProductDataFromFilepath(productPath, mediaType=mediaType)
+            if isVersionFolder:
+                pathData = self.core.mediaProducts.getMediaDataFromVersionFolder(productPath, mediaType=mediaType)
+            else:
+                pathData = self.core.mediaProducts.getRenderProductDataFromFilepath(productPath, mediaType=mediaType)
+
             productData.update(pathData)
 
-        productData["locations"] = []
+        productData["locations"] = {}
         loc = self.core.paths.getLocationFromPath(os.path.normpath(productPath))
         if len(self.core.paths.getRenderProductBasePaths()) > 1:
             globalPath = self.core.convertPath(os.path.normpath(productPath), "global")
             if os.path.exists(os.path.normpath(globalPath)):
-                productData["locations"].append("global")
+                productData["locations"]["global"] = globalPath
 
         if self.core.useLocalFiles:
             localPath = self.core.convertPath(os.path.normpath(productPath), "local")
             if os.path.exists(localPath):
-                productData["locations"].append("local")
+                productData["locations"]["local"] = localPath
 
-        if loc not in ["global", "local"]:
-            productData["locations"].append(loc)
+        if loc and loc not in ["global", "local"]:
+            productData["locations"][loc] = productPath
 
         productData["path"] = productPath
         return productData

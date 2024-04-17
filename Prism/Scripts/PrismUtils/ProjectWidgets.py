@@ -863,19 +863,26 @@ class ProjectCreated(QDialog):
         self.lo_main = QVBoxLayout()
         self.lo_main.setSpacing(50)
         self.setLayout(self.lo_main)
-        msg = 'The project "%s" was created successfully!' % self.prjname
+        msg = "Project <b>%s</b> was created successfully!" % self.prjname
         self.l_success = QLabel(msg)
         self.l_icon = QLabel()
         headerPath = os.path.join(
             self.core.prismRoot, "Scripts", "UserInterfacesPrism", "check.png"
         )
-        pmap = self.core.media.getPixmapFromPath(headerPath)
-        self.l_icon.setPixmap(pmap)
-        self.l_icon.setAlignment(Qt.AlignHCenter)
+        icon = self.core.media.getColoredIcon(headerPath, r=29, g=191, b=106, force=True)
+        self.l_icon.setPixmap(icon.pixmap(60, 60))
+        self.l_icon.setAlignment(Qt.AlignCenter)
+        self.w_buttons = QWidget()
+        self.lo_buttons = QHBoxLayout(self.w_buttons)
         self.b_browser = QPushButton("Open Project Browser")
+        self.b_explorer = QPushButton("Open in Explorer")
         self.lo_main.addWidget(self.l_success)
         self.lo_main.addWidget(self.l_icon)
-        self.lo_main.addWidget(self.b_browser)
+        self.lo_buttons.addStretch()
+        self.lo_buttons.addWidget(self.b_browser)
+        self.lo_buttons.addWidget(self.b_explorer)
+        self.lo_buttons.addStretch()
+        self.lo_main.addWidget(self.w_buttons)
         self.core.parentWindow(self)
         self.setFocus()
 
@@ -883,6 +890,8 @@ class ProjectCreated(QDialog):
     def connectEvents(self):
         self.b_browser.clicked.connect(self.core.projectBrowser)
         self.b_browser.clicked.connect(self.accept)
+        self.b_explorer.clicked.connect(lambda: self.core.openFolder(self.core.projectPath))
+        self.b_explorer.clicked.connect(self.accept)
 
 
 class SetProject(QDialog):
@@ -1235,6 +1244,7 @@ class CreateAssetDlg(PrismWidgets.CreateItem):
         icon = self.core.media.getColoredIcon(iconPath)
         self.buttonBox.buttons()[2].setIcon(icon)
 
+        self.w_item.setContentsMargins(0, 0, 0, 0)
         self.e_item.setFocus()
         self.e_item.setToolTip("Asset name or comma separated list of asset names.\nParent nFolders can be included using slashes.")
         self.l_item.setText("Asset(s):")
@@ -1256,6 +1266,26 @@ class CreateAssetDlg(PrismWidgets.CreateItem):
         self.lo_thumbnail.addWidget(self.l_thumbnailStr)
         self.lo_thumbnail.addWidget(self.l_thumbnail)
         self.layout().insertWidget(self.layout().indexOf(self.buttonBox)-2, self.w_thumbnail)
+
+        self.w_taskPreset = QWidget()
+        self.lo_taskPreset = QHBoxLayout(self.w_taskPreset)
+        self.lo_taskPreset.setContentsMargins(0, 0, 0, 0)
+        self.l_taskPreset = QLabel("Task Preset:")
+        self.chb_taskPreset = QCheckBox()
+        self.cb_taskPreset = QComboBox()
+        self.cb_taskPreset.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        self.lo_taskPreset.addWidget(self.l_taskPreset)
+        self.lo_taskPreset.addStretch()
+        self.lo_taskPreset.addWidget(self.chb_taskPreset)
+        self.lo_taskPreset.addWidget(self.cb_taskPreset)
+        self.cb_taskPreset.setEnabled(self.chb_taskPreset.isChecked())
+        self.chb_taskPreset.toggled.connect(self.cb_taskPreset.setEnabled)
+        presets = self.core.projects.getAssetTaskPresets()
+        if presets:
+            for preset in presets:
+                self.cb_taskPreset.addItem(preset.get("name", ""), preset)
+
+            self.layout().insertWidget(self.layout().indexOf(self.buttonBox)-2, self.w_taskPreset)
 
         self.l_info = QLabel("Description:")
         self.layout().insertWidget(self.layout().indexOf(self.buttonBox)-2, self.l_info)

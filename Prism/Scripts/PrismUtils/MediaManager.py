@@ -567,7 +567,7 @@ class MediaManager(object):
     @err_catcher(name=__name__)
     def getPixmapFromExrPath(self, path, width=None, height=None, channel=None, allowThumb=True, regenerateThumb=False):
         thumbEnabled = self.getUseThumbnails()
-        if allowThumb and thumbEnabled and not regenerateThumb:
+        if allowThumb and thumbEnabled and not regenerateThumb and path:
             thumbPath = self.getThumbnailPath(path)
             if os.path.exists(thumbPath):
                 return self.getPixmapFromPath(thumbPath, width=width, height=height)
@@ -580,6 +580,10 @@ class MediaManager(object):
 
         path = str(path)  # for python 2
         imgInput = oiio.ImageInput.open(path)
+        if not imgInput:
+            logger.debug("failed to read media file: %s" % path)
+            return
+
         chbegin = 0
         chend = 3
         subimage = 0
@@ -678,7 +682,12 @@ class MediaManager(object):
                 )
 
         pixmap = QPixmap(path)
-        if (width or height) and not pixmap.isNull():
+        if pixmap.isNull():
+            pixmap = self.core.media.getPixmapFromExrPath(
+                path, width, height
+            )
+
+        if (width or height) and pixmap and not pixmap.isNull():
             pixmap = self.scalePixmap(pixmap, width, height)
 
         return pixmap
@@ -970,11 +979,12 @@ class MediaManager(object):
             path = paths[0]
 
         comd = [progPath, path]
-
+        logger.debug("opening media: %s" % comd)
         with open(os.devnull, "w") as f:
             try:
                 subprocess.Popen(comd, stdin=subprocess.PIPE, stdout=f, stderr=f)
             except:
+                comd = "%s %s" % (comd[0], comd[1])
                 try:
                     subprocess.Popen(
                         comd, stdin=subprocess.PIPE, stdout=f, stderr=f, shell=True
@@ -999,7 +1009,11 @@ class MediaManager(object):
                 base, "00_Pipeline/Fallbacks/" + filename
             )
 
-        return self.core.media.getPixmapFromPath(imgFile)
+        pmap = self.core.media.getPixmapFromPath(imgFile)
+        if not pmap:
+            pmap = QPixmap()
+
+        return pmap
 
     @property
     @err_catcher(name=__name__)

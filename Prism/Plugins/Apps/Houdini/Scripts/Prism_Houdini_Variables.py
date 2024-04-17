@@ -37,7 +37,7 @@ import os
 
 class Prism_Houdini_Variables(object):
     def __init__(self, core, plugin):
-        self.version = "v2.0.0"
+        self.version = "v2.0.4"
         self.pluginName = "Houdini"
         self.pluginType = "App"
         self.appShortName = "Hou"

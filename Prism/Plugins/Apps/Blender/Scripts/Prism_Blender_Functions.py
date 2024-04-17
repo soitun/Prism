@@ -42,6 +42,7 @@ import shutil
 import logging
 import operator
 import tempfile
+import math
 
 import bpy
 
@@ -226,11 +227,18 @@ class Prism_Blender_Functions(object):
 
     @err_catcher(name=__name__)
     def getFPS(self, origin):
-        return bpy.context.scene.render.fps
+        intFps = bpy.context.scene.render.fps
+        baseFps = bpy.context.scene.render.fps_base
+        return round(intFps / baseFps, 2)
 
     @err_catcher(name=__name__)
     def setFPS(self, origin, fps):
-        bpy.context.scene.render.fps = int(fps)
+        if int(fps) == fps:
+            bpy.context.scene.render.fps = int(fps)
+        else:
+            intFps = math.ceil(fps)
+            bpy.context.scene.render.fps = intFps
+            bpy.context.scene.render.fps_base = intFps/fps
 
     @err_catcher(name=__name__)
     def getResolution(self):
@@ -260,6 +268,7 @@ class Prism_Blender_Functions(object):
             return False
 
         ctx = self.getOverrideContext(dftContext=False)
+        filepath = os.path.normpath(filepath)
         try:
             if bpy.app.version < (4, 0, 0):
                 bpy.ops.wm.open_mainfile(ctx, "INVOKE_DEFAULT", filepath=filepath, display_file_selector=False)
@@ -622,7 +631,7 @@ class Prism_Blender_Functions(object):
         return outputName
 
     @err_catcher(name=__name__)
-    def exportUsd(self, outputName, origin, startFrame, endFrame, expNodes):
+    def exportUsd(self, outputName, origin, startFrame, endFrame, expNodes, catchError=True):
         from _bpy import ops as _ops_module
         try:
             _ops_module.as_string("WM_OT_usd_export")
@@ -633,20 +642,27 @@ class Prism_Blender_Functions(object):
             return False
 
         self.setFrameRange(origin, startFrame, endFrame)
-        if bpy.app.version < (4, 0, 0):
-            bpy.ops.wm.usd_export(
-                self.getOverrideContext(origin),
-                filepath=outputName,
-                export_animation=startFrame != endFrame,
-                selected_objects_only=(not origin.chb_wholeScene.isChecked()),
-            )
-        else:
-            with bpy.context.temp_override(**self.getOverrideContext(origin)):
+        try:
+            if bpy.app.version < (4, 0, 0):
                 bpy.ops.wm.usd_export(
+                    self.getOverrideContext(origin),
                     filepath=outputName,
                     export_animation=startFrame != endFrame,
                     selected_objects_only=(not origin.chb_wholeScene.isChecked()),
                 )
+            else:
+                with bpy.context.temp_override(**self.getOverrideContext(origin)):
+                    bpy.ops.wm.usd_export(
+                        filepath=outputName,
+                        export_animation=startFrame != endFrame,
+                        selected_objects_only=(not origin.chb_wholeScene.isChecked()),
+                    )
+        except:
+            if catchError:
+                return False
+            else:
+                raise
+
         return outputName
 
     @err_catcher(name=__name__)
@@ -684,8 +700,9 @@ class Prism_Blender_Functions(object):
         if bpy.app.version < (4, 0, 0):
             bpy.ops.object.select_all(ctx, action="DESELECT")
         else:
-            with bpy.context.temp_override(**ctx):
-                bpy.ops.object.select_all(action="DESELECT")
+            if ext != ".blend":
+                with bpy.context.temp_override(**ctx):
+                    bpy.ops.object.select_all(action="DESELECT")
 
         return outputName
 
@@ -720,11 +737,19 @@ class Prism_Blender_Functions(object):
             for area in screen.areas:
                 if area.type == "VIEW_3D":
                     ctx["area"] = area
+                    ctx["region"] = None
                     return ctx
 
             for area in screen.areas:
                 if area.type == "IMAGE_EDITOR":
                     ctx["area"] = area
+                    ctx["region"] = None
+                    return ctx
+
+            for area in screen.areas:
+                if area.type == "NODE_EDITOR":
+                    ctx["area"] = area
+                    ctx["region"] = None
                     return ctx
 
         return ctx

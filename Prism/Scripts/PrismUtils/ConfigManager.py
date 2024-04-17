@@ -134,20 +134,23 @@ class ConfigManager(object):
 
             configPath = os.path.join(projectPath, "00_Pipeline", "pipeline.yml")
         else:
-            configName = self.getProjectConfigName()
-            configRelPath = os.getenv("PRISM_PROJECT_CONFIG_PATH")
-            if not configRelPath or not useEnv:
-                if pipelineDir:
-                    pipeDir = pipelineDir
-                else:
-                    pipeDir = self.core.projects.getDefaultPipelineFolder()
-                configRelPath = os.path.join(pipeDir, configName)
+            if getattr(self.core, "projectPath", "") and os.path.normpath(projectPath) == os.path.normpath(self.core.projectPath):
+                configPath = self.core.prismIni
+            else:
+                configName = self.getProjectConfigName()
+                configRelPath = os.getenv("PRISM_PROJECT_CONFIG_PATH")
+                if not configRelPath or not useEnv:
+                    if pipelineDir:
+                        pipeDir = pipelineDir
+                    else:
+                        pipeDir = self.core.projects.getDefaultPipelineFolder()
+                    configRelPath = os.path.join(pipeDir, configName)
 
-            configPath = os.path.join(projectPath, configRelPath)
-            if not os.path.exists(configPath):
-                configPath2 = os.path.join(projectPath, configName)
-                if os.path.exists(configPath2):
-                    configPath = configPath2
+                configPath = os.path.join(projectPath, configRelPath)
+                if not os.path.exists(configPath):
+                    configPath2 = os.path.join(projectPath, configName)
+                    if os.path.exists(configPath2):
+                        configPath = configPath2
 
         return configPath
 

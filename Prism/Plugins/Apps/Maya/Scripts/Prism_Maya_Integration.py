@@ -205,11 +205,15 @@ class Prism_Maya_Integration(object):
                 "prismBrowser.png",
                 "prismStates.png",
                 "prismSettings.png",
+                "prismImport.png",
+                "prismExport.png",
+                "prismPlayblast.png",
+                "prismRender.png",
             ]
 
             for i in icons:
                 iconPath = os.path.join(
-                    self.core.prismRoot, "Scripts", "UserInterfacesPrism", i
+                    integrationBase, "icons", i
                 )
                 tPath = os.path.join(installPath, "prefs", "icons", i)
 
@@ -268,13 +272,9 @@ class Prism_Maya_Integration(object):
         try:
             if platform.system() == "Windows":
                 mayaPath = [
-                    os.path.join(userFolders["Documents"], "maya", "2016"),
-                    os.path.join(userFolders["Documents"], "maya", "2017"),
-                    os.path.join(userFolders["Documents"], "maya", "2018"),
-                    os.path.join(userFolders["Documents"], "maya", "2019"),
-                    os.path.join(userFolders["Documents"], "maya", "2020"),
                     os.path.join(userFolders["Documents"], "maya", "2022"),
                     os.path.join(userFolders["Documents"], "maya", "2023"),
+                    os.path.join(userFolders["Documents"], "maya", "2024"),
                 ]
             elif platform.system() == "Linux":
                 userName = (
@@ -283,13 +283,9 @@ class Prism_Maya_Integration(object):
                     else os.environ["USER"]
                 )
                 mayaPath = [
-                    os.path.join("/home", userName, "maya", "2016"),
-                    os.path.join("/home", userName, "maya", "2017"),
-                    os.path.join("/home", userName, "maya", "2018"),
-                    os.path.join("/home", userName, "maya", "2019"),
-                    os.path.join("/home", userName, "maya", "2020"),
                     os.path.join("/home", userName, "maya", "2022"),
                     os.path.join("/home", userName, "maya", "2023"),
+                    os.path.join("/home", userName, "maya", "2024"),
                 ]
             elif platform.system() == "Darwin":
                 userName = (
@@ -298,13 +294,9 @@ class Prism_Maya_Integration(object):
                     else os.environ["USER"]
                 )
                 mayaPath = [
-                    "/Users/%s/Library/Preferences/Autodesk/maya/2016" % userName,
-                    "/Users/%s/Library/Preferences/Autodesk/maya/2017" % userName,
-                    "/Users/%s/Library/Preferences/Autodesk/maya/2018" % userName,
-                    "/Users/%s/Library/Preferences/Autodesk/maya/2019" % userName,
-                    "/Users/%s/Library/Preferences/Autodesk/maya/2020" % userName,
                     "/Users/%s/Library/Preferences/Autodesk/maya/2022" % userName,
                     "/Users/%s/Library/Preferences/Autodesk/maya/2023" % userName,
+                    "/Users/%s/Library/Preferences/Autodesk/maya/2024" % userName,
                 ]
 
             mayaItem = QTreeWidgetItem(["Maya"])

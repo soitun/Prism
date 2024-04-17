@@ -558,11 +558,6 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
         )
         prvPath = os.path.splitext(scenePath)[0] + "preview.jpg"
 
-        if not os.path.exists(infoPath) and not os.path.exists(prvPath):
-            if hasattr(self, "detailWin") and self.detailWin.isVisible():
-                self.detailWin.close()
-            return
-
         if (
             not hasattr(self, "detailWin")
             or not self.detailWin.isVisible()
@@ -1684,7 +1679,7 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
                 w.deleteLater()
 
         curEntities = self.getCurrentEntities()
-        self.gb_entityInfo.setTitle("Assetinfo")
+        self.gb_entityInfo.setTitle(self.core.tr("Assetinfo"))
 
         if curEntities:
             if len(curEntities) > 1:
@@ -1697,10 +1692,10 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
                     assetName = self.core.entities.getAssetNameFromPath(curEntity["paths"][0])
                     description = (
                         self.core.entities.getAssetDescription(assetName)
-                        or "< no description >"
+                        or self.core.tr("< no description >")
                     )
 
-                    l_key = QLabel("Description:    ")
+                    l_key = QLabel(self.core.tr("Description:    "))
                     l_val = QLabel(description)
                     l_val.setWordWrap(True)
                     self.lo_entityInfo.addWidget(l_key, 0, 0)
@@ -1731,7 +1726,7 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
                     l_info = QLabel(description)
                     self.lo_entityInfo.addWidget(l_info)
         else:
-            description = "No asset selected"
+            description = self.core.tr("No asset selected")
             l_info = QLabel(description)
             self.lo_entityInfo.addWidget(l_info)
 
@@ -1756,7 +1751,7 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
                 w.deleteLater()
 
         curEntities = self.getCurrentEntities()
-        self.gb_entityInfo.setTitle("Shotinfo")
+        self.gb_entityInfo.setTitle(self.core.tr("Shotinfo"))
 
         if curEntities:
             if len(curEntities) > 1:
@@ -1801,7 +1796,7 @@ class SceneBrowser(QWidget, SceneBrowser_ui.Ui_w_sceneBrowser):
                             self.lo_entityInfo.addWidget(l_val, idx, 1)
                             idx += 1
         else:
-            l_info = QLabel("No shot selected")
+            l_info = QLabel(self.core.tr("No shot selected"))
             self.lo_entityInfo.addWidget(l_info)
 
         if pmap is None:
@@ -2624,7 +2619,7 @@ class ScenefileItem(QWidget):
                     if os.path.exists(localPath):
                         self.locationLabels["local"].setHidden(False)
 
-                elif loc.get("name") in self.data.get("locations", []):
+                elif loc.get("name") in self.data.get("locations", {}):
                     self.locationLabels[loc["name"]].setHidden(False)
 
     @err_catcher(name=__name__)

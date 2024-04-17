@@ -383,6 +383,15 @@ class Projects(object):
             dft=False,
             configPath=configPath,
         )
+        expPath = self.core.getConfig(
+            "globals",
+            "expectedPrjPath",
+            dft="",
+            configPath=configPath,
+        )
+        if expPath and expPath.strip("\\") != self.core.projectPath.strip("\\") and os.getenv("PRISM_SKIP_PROJECT_PATH_WARNING", "0") != "1":
+            msg = "This project should be loaded from the following path:\n\n%s\n\nCurrently it is loaded from this path:\n\n%s\n\nContinuing can have unexpected consequences." % (expPath, self.core.projectPath)
+            self.core.popup(msg)
 
         self.core._scenePath = None
         self.core._shotPath = None
@@ -687,6 +696,8 @@ class Projects(object):
             {"name": "Lighting", "abbreviation": "lgt", "defaultTasks": ["Lighting"]},
             {"name": "Compositing", "abbreviation": "cmp", "defaultTasks": ["Compositing"]},
         ]
+        dftTaskPresetsAsset = self.getDftAssetTaskPresets()
+        dftTaskPresetsShot = self.getDftShotTaskPresets()
 
         structure = self.getStructureValues(self.getDefaultProjectStructure())
         settings = OrderedDict(
@@ -699,6 +710,8 @@ class Projects(object):
                             ("prism_version", self.core.version),
                             ("departments_asset", dftDepsAsset),
                             ("departments_shot", dftDepsShot),
+                            ("taskpresets_asset", dftTaskPresetsAsset),
+                            ("taskpresets_shot", dftTaskPresetsShot),
                             ("uselocalfiles", False),
                             ("track_dependencies", "publish"),
                             ("checkframerange", True),
@@ -1998,6 +2011,213 @@ class Projects(object):
             )
 
     @err_catcher(name=__name__)
+    def getAssetTaskPresets(self, configData=None):
+        if configData:
+            presets = configData.get("globals", {}).get("taskpresets_asset")
+        else:
+            presets = self.core.getConfig(
+                "globals", "taskpresets_asset", configPath=self.core.prismIni
+            )
+
+        if presets is None:
+            presets = self.getDftAssetTaskPresets()
+            self.setTaskPresets("asset", presets, configData)
+
+        try:
+            presets = list(presets)
+        except:
+            presets = []
+
+        return presets
+
+    @err_catcher(name=__name__)
+    def getDftAssetTaskPresets(self):
+        presets = [
+            {
+                "name": "All",
+                "departments": [
+                    {
+                        "name": "Concept",
+                        "tasks": ["Concept"]
+                    },
+                    {
+                        "name": "Modeling",
+                        "tasks": ["Modeling"]
+                    },
+                    {
+                        "name": "Surfacing",
+                        "tasks": ["Surfacing"]
+                    },
+                    {
+                        "name": "Rigging",
+                        "tasks": ["Rigging"]
+                    }
+                ]
+            },
+            {
+                "name": "Character",
+                "departments": [
+                    {
+                        "name": "Modeling",
+                        "tasks": ["Modeling"]
+                    },
+                    {
+                        "name": "Surfacing",
+                        "tasks": ["Surfacing"]
+                    },
+                    {
+                        "name": "Rigging",
+                        "tasks": ["Rigging"]
+                    }
+                ]
+            },
+            {
+                "name": "Prop",
+                "departments": [
+                    {
+                        "name": "Modeling",
+                        "tasks": ["Modeling"]
+                    },
+                    {
+                        "name": "Surfacing",
+                        "tasks": ["Surfacing"]
+                    }
+                ]
+            },
+            {
+                "name": "Environment",
+                "departments": [
+                    {
+                        "name": "Modeling",
+                        "tasks": ["Layout"]
+                    }
+                ]
+            }
+        ]
+        return presets
+
+    @err_catcher(name=__name__)
+    def getShotTaskPresets(self, configData=None):
+        if configData:
+            presets = configData.get("globals", {}).get("taskpresets_shot")
+        else:
+            presets = self.core.getConfig(
+                "globals", "taskpresets_shot", configPath=self.core.prismIni
+            )
+
+        if presets is None:
+            presets = self.getDftShotTaskPresets()
+            self.setTaskPresets("shot", presets, configData)
+
+        try:
+            presets = list(presets)
+        except:
+            presets = []
+
+        return presets
+
+    @err_catcher(name=__name__)
+    def getDftShotTaskPresets(self):
+        presets = [
+            {
+                "name": "All",
+                "departments": [
+                    {
+                        "name": "Layout",
+                        "tasks": ["Layout"]
+                    },
+                    {
+                        "name": "Animation",
+                        "tasks": ["Animation"]
+                    },
+                    {
+                        "name": "FX",
+                        "tasks": ["Effects"]
+                    },
+                    {
+                        "name": "CharFX",
+                        "tasks": ["CharacterEffects"]
+                    },
+                    {
+                        "name": "Lighting",
+                        "tasks": ["Lighting"]
+                    },
+                    {
+                        "name": "Compositing",
+                        "tasks": ["Compositing"]
+                    }
+                ]
+            },
+            {
+                "name": "Simple",
+                "departments": [
+                    {
+                        "name": "Animation",
+                        "tasks": ["Animation"]
+                    },
+                    {
+                        "name": "Lighting",
+                        "tasks": ["Lighting"]
+                    },
+                    {
+                        "name": "Compositing",
+                        "tasks": ["Compositing"]
+                    }
+                ]
+            },
+            {
+                "name": "Minimal",
+                "departments": [
+                    {
+                        "name": "Lighting",
+                        "tasks": ["Lighting"]
+                    }
+                ]
+            }
+        ]
+        return presets
+
+    @err_catcher(name=__name__)
+    def addTaskPreset(self, entity, name, departments=None, configData=None):
+        departments = departments or []
+        if entity == "asset":
+            key = "taskpresets_asset"
+        elif entity in ["shot", "sequence"]:
+            key = "taskpresets_shot"
+
+        if configData:
+            presets = configData.get("globals", {}).get(key, [])
+        else:
+            presets = self.core.getConfig(
+                "globals", key, configPath=self.core.prismIni, dft=[]
+            )
+
+        validPresets = []
+        for preset in presets:
+            if preset["name"] != name:
+                validPresets.append(preset)
+
+        preset = {"name": name, "departments": departments}
+        validPresets.append(preset)
+
+        self.setTaskPresets(entity, validPresets, configData)
+        return preset
+
+    @err_catcher(name=__name__)
+    def setTaskPresets(self, entity, presets, configData=None):
+        if entity == "asset":
+            key = "taskpresets_asset"
+        elif entity in ["shot", "sequence"]:
+            key = "taskpresets_shot"
+
+        if configData:
+            configData["globals"][key] = presets
+        else:
+            self.core.setConfig(
+                "globals", key, presets, configPath=self.core.prismIni
+            )
+
+    @err_catcher(name=__name__)
     def getDefaultCodePresets(self):
         presets = [
             {
@@ -2572,6 +2792,11 @@ class Projects(object):
             copAct = QAction("Copy path", self.parent)
             copAct.triggered.connect(self.onCopyPathClicked)
             menu.addAction(copAct)
+
+            self.core.callback(
+                name="projectWidgetGetContextMenu",
+                args=[self, menu],
+            )
             return menu
 
         @err_catcher(name=__name__)
@@ -2592,6 +2817,9 @@ class Projects(object):
                 return
 
             menu = self.getContextMenu()
+            if not menu or menu.isEmpty():
+                return
+
             if hasattr(self.parent, "allowClose"):
                 self.parent.allowClose = False
 

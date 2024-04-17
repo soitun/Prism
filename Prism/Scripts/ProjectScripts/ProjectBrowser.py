@@ -96,8 +96,8 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.core.parentWindow(self)
 
         self.setWindowTitle(
-            "Prism %s - Project Browser - %s"
-            % (self.core.version, self.core.projectName)
+            "Prism %s - %s - %s"
+            % (self.core.version, self.core.tr("Project Browser"), self.core.projectName)
         )
         self.tabs = []
         self.previousTab = None
@@ -155,23 +155,23 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
     @err_catcher(name=__name__)
     def loadLayout(self):
         self.setCentralWidget(self.scrollArea)
-        self.helpMenu = QMenu("Help", self)
+        self.helpMenu = QMenu(self.core.tr("Help"), self)
 
-        self.actionWebsite = QAction("Visit website", self)
+        self.actionWebsite = QAction(self.core.tr("Visit website"), self)
         self.actionWebsite.triggered.connect(lambda: self.core.openWebsite("home"))
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "open-web.png")
         icon = self.core.media.getColoredIcon(path)
         self.actionWebsite.setIcon(icon)
         self.helpMenu.addAction(self.actionWebsite)
 
-        self.actionWebsite = QAction("Tutorials", self)
+        self.actionWebsite = QAction(self.core.tr("Tutorials"), self)
         self.actionWebsite.triggered.connect(lambda: self.core.openWebsite("tutorials"))
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "tutorials.png")
         icon = self.core.media.getColoredIcon(path)
         self.actionWebsite.setIcon(icon)
         self.helpMenu.addAction(self.actionWebsite)
 
-        self.actionWebsite = QAction("Documentation", self)
+        self.actionWebsite = QAction(self.core.tr("Documentation"), self)
         self.actionWebsite.triggered.connect(
             lambda: self.core.openWebsite("documentation")
         )
@@ -180,7 +180,7 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.actionWebsite.setIcon(icon)
         self.helpMenu.addAction(self.actionWebsite)
 
-        self.actionAbout = QAction("About...", self)
+        self.actionAbout = QAction(self.core.tr("About..."), self)
         self.actionAbout.triggered.connect(self.core.showAbout)
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "info.png")
         icon = self.core.media.getColoredIcon(path)
@@ -223,7 +223,7 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.menuTools.addMenu(self.recentMenu)
         self.refreshRecentMenu()
 
-        self.actionSendFeedback = QAction("Send feedback...", self)
+        self.actionSendFeedback = QAction(self.core.tr("Send feedback..."), self)
         self.actionSendFeedback.triggered.connect(self.core.sendFeedbackDlg)
         self.menubar.addAction(self.actionSendFeedback)
         self.w_menuCorner = QWidget()
@@ -316,17 +316,17 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.sceneBrowser = SceneBrowser.SceneBrowser(
             core=self.core, projectBrowser=self, refresh=False
         )
-        self.addTab("Scenefiles", self.sceneBrowser)
+        self.addTab(self.core.tr("Scenefiles"), self.sceneBrowser)
 
         self.productBrowser = ProductBrowser.ProductBrowser(core=self.core, refresh=False, projectBrowser=self)
         self.productBrowser.autoClose = False
       #  self.productBrowser.handleImport = False
-        self.addTab("Products", self.productBrowser)
+        self.addTab(self.core.tr("Products"), self.productBrowser)
 
         self.mediaBrowser = MediaBrowser.MediaBrowser(
             core=self.core, projectBrowser=self, refresh=False
         )
-        self.addTab("Media", self.mediaBrowser)
+        self.addTab(self.core.tr("Media"), self.mediaBrowser)
 
         self.tbw_project.setStyleSheet("QTabWidget::tab-bar {alignment: center;}")
 

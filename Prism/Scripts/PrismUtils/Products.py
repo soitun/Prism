@@ -37,6 +37,7 @@ import logging
 import shutil
 import platform
 import errno
+import copy
 
 from qtpy.QtCore import *
 from qtpy.QtGui import *
@@ -56,13 +57,18 @@ class Products(object):
     def getProductNamesFromEntity(self, entity, locations=None):
         data = self.getProductsFromEntity(entity, locations=locations)
         names = {}
+        useTasks = self.core.getConfig("globals", "productTasks", config="project")
         for product in data:
-            idf = product["product"]
-            if idf not in names:
-                names[idf] = product
-                names[idf]["locations"] = []
+            if useTasks:
+                idf = "%s/%s/%s" % (product.get("department", "unknown"), product.get("task", "unknown"), product["product"])
+            else:
+                idf = product["product"]
 
-            names[idf]["locations"].append(product["path"])
+            if idf not in names:
+                names[idf] = copy.deepcopy(product)
+                names[idf]["locations"] = {}
+
+            names[idf]["locations"].update(product["locations"])
 
         return names
 
@@ -101,6 +107,7 @@ class Products(object):
 
                 d = context.copy()
                 d.update(data)
+                d["locations"] = {loc: data.get("path", "")}
                 products.append(d)
 
         return products
@@ -113,6 +120,9 @@ class Products(object):
 
     @err_catcher(name=__name__)
     def getLocationFromFilepath(self, path):
+        if not path:
+            return
+
         locDict = self.core.paths.getExportProductBasePaths()
         nPath = os.path.normpath(path)
         locations = []
@@ -177,8 +187,6 @@ class Products(object):
                     versions.append(locVersion)
                     continue
 
-                break
-
         return versions
 
     @err_catcher(name=__name__)
@@ -215,27 +223,29 @@ class Products(object):
         for loc in searchLocations:
             ctx = context.copy()
             ctx["project_path"] = locationData[loc]
-            template = self.core.projects.getResolvedProjectStructurePath(
+            templates = self.core.projects.getResolvedProjectStructurePaths(
                 key, context=ctx
             )
+            versionData = []
+            for template in templates:
+                versionData += self.core.projects.getMatchingPaths(template)
 
-            versionData = self.core.projects.getMatchingPaths(template)
             for data in versionData:
-                c = ctx.copy()
+                c = copy.deepcopy(ctx)
                 c.update(data)
                 if self.getIntVersionFromVersionName(c["version"]) is None and c["version"] != "master":
                     continue
 
+                c["locations"] = {}
                 c["paths"] = [data.get("path")]
+                c["locations"][loc] = data.get("path", "")
                 if c["version"] and "_" in c["version"] and c["version"].count("_") == 1:
                     c["version"], c["wedge"] = c["version"].split("_")
-
-                if "locations" in c:
-                    c["locations"] = list(c["locations"])
 
                 for version in versions:
                     if version.get("version") == c.get("version"):
                         version["paths"].append(c.get("path"))
+                        version["locations"].update(c.get("locations"))
                         break
                 else:
                     versions.append(c)
@@ -822,6 +832,9 @@ class Products(object):
         context = self.getVersionStackContextFromPath(path)
         context["version"] = "master"
         key = "productVersions"
+        if "wedge" not in context:
+            context["wedge"] = ""
+
         masterFolder = self.core.projects.getResolvedProjectStructurePath(
             key, context=context
         )

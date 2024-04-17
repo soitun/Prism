@@ -141,27 +141,7 @@ class ImageRenderClass(object):
         if stateData is not None:
             self.loadData(stateData)
         else:
-            context = self.getCurrentContext()
-            if context.get("type") == "asset":
-                self.setRangeType("Single Frame")
-            elif context.get("type") == "shot":
-                self.setRangeType("Shot")
-            elif self.stateManager.standalone:
-                self.setRangeType("Custom")
-            else:
-                self.setRangeType("Scene")
-
-            start, end = self.getFrameRange("Scene")
-            if start is not None:
-                self.sp_rangeStart.setValue(start)
-
-            if end is not None:
-                self.sp_rangeEnd.setValue(end)
-
-            if context.get("task"):
-                self.setTaskname(context.get("task"))
-
-            self.updateUi()
+            self.initializeContextBasedSettings()
 
     @err_catcher(name=__name__)
     def loadData(self, data):
@@ -304,7 +284,7 @@ class ImageRenderClass(object):
         self.sp_resHeight.editingFinished.connect(self.stateManager.saveStatesToScene)
         self.b_resPresets.clicked.connect(self.showResPresets)
         self.cb_master.activated.connect(self.stateManager.saveStatesToScene)
-        self.cb_outPath.activated[str].connect(self.stateManager.saveStatesToScene)
+        self.cb_outPath.activated.connect(self.stateManager.saveStatesToScene)
         self.cb_renderLayer.activated.connect(self.stateManager.saveStatesToScene)
         self.cb_format.activated.connect(self.stateManager.saveStatesToScene)
         self.gb_submit.toggled.connect(self.rjToggled)
@@ -334,6 +314,30 @@ class ImageRenderClass(object):
         self.lw_passes.itemDoubleClicked.connect(
             lambda x: self.core.appPlugin.sm_render_openPasses(self)
         )
+
+    @err_catcher(name=__name__)
+    def initializeContextBasedSettings(self):
+        context = self.getCurrentContext()
+        if context.get("type") == "asset":
+            self.setRangeType("Single Frame")
+        elif context.get("type") == "shot":
+            self.setRangeType("Shot")
+        elif self.stateManager.standalone:
+            self.setRangeType("Custom")
+        else:
+            self.setRangeType("Scene")
+
+        start, end = self.getFrameRange("Scene")
+        if start is not None:
+            self.sp_rangeStart.setValue(start)
+
+        if end is not None:
+            self.sp_rangeEnd.setValue(end)
+
+        if context.get("task"):
+            self.setTaskname(context.get("task"))
+
+        self.updateUi()
 
     @err_catcher(name=__name__)
     def showLastPathMenu(self, state=None):
@@ -1167,6 +1171,9 @@ class ImageRenderClass(object):
                 os.makedirs(os.path.dirname(rSettings["outputName"]))
 
             self.core.saveScene(versionUp=False, prismReq=False)
+            if self.core.getConfig("globals", "backupScenesOnPublish", config="project"):
+                self.core.entities.backupScenefile(os.path.dirname(rSettings["outputName"]), bufferMinutes=0)
+
             if not self.gb_submit.isHidden() and self.gb_submit.isChecked():
                 handleMaster = "media" if self.isUsingMasterVersion() else False
                 plugin = self.core.plugins.getRenderfarmPlugin(self.cb_manager.currentText())

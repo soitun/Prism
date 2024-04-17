@@ -32,6 +32,9 @@
 # along with Prism.  If not, see <https://www.gnu.org/licenses/>.
 
 
+import os
+
+
 class Prism_PluginEmpty_Variables(object):
     def __init__(self, core, plugin):
         self.version = "v2.0.0.beta2"
@@ -46,3 +49,6 @@ class Prism_PluginEmpty_Variables(object):
         self.appColor = [255, 255, 255]
         self.renderPasses = []
         self.platforms = ["Windows", "Linux", "Darwin"]
+        self.pluginDirectory = os.path.abspath(
+            os.path.dirname(os.path.dirname(__file__))
+        )

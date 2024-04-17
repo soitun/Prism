@@ -122,43 +122,7 @@ class ExportClass(object):
         if stateData is not None:
             self.loadData(stateData)
         else:
-            context = self.getCurrentContext()
-            if (
-                context.get("type") == "shot"
-                and "sequence" in context
-            ):
-                self.refreshShotCameras()
-                shotName = self.core.entities.getShotName(context)
-                idx = self.cb_sCamShot.findText(shotName)
-                if idx != -1:
-                    self.cb_sCamShot.setCurrentIndex(idx)
-
-            startFrame, endFrame = self.getFrameRange("Scene")
-            if startFrame is not None:
-                self.sp_rangeStart.setValue(startFrame)
-
-            if endFrame is not None:
-                self.sp_rangeEnd.setValue(endFrame)
-
-            if context.get("type") == "asset":
-                self.setRangeType("Single Frame")
-                self.sp_rangeEnd.setValue(startFrame)
-            elif context.get("type") == "shot":
-                self.setRangeType("Shot")
-            elif self.stateManager.standalone:
-                self.setRangeType("Custom")
-            else:
-                self.setRangeType("Scene")
-
-            if context.get("task"):
-                self.setTaskname(context.get("task"))
-
-            getattr(self.core.appPlugin, "sm_export_updateObjects", lambda x: None)(
-                self
-            )
-
-            if not self.stateManager.standalone:
-                self.addObjects()
+            self.initializeContextBasedSettings()
 
         self.typeChanged(self.getOutputType())
 
@@ -261,8 +225,8 @@ class ExportClass(object):
         self.sp_rangeStart.editingFinished.connect(self.startChanged)
         self.sp_rangeEnd.editingFinished.connect(self.endChanged)
         self.chb_master.stateChanged.connect(self.stateManager.saveStatesToScene)
-        self.cb_outPath.activated[str].connect(self.stateManager.saveStatesToScene)
-        self.cb_outType.activated[str].connect(self.typeChanged)
+        self.cb_outPath.activated.connect(self.stateManager.saveStatesToScene)
+        self.cb_outType.activated.connect(lambda x: self.typeChanged(self.getOutputType()))
         self.chb_wholeScene.stateChanged.connect(self.wholeSceneChanged)
         self.chb_additionalOptions.stateChanged.connect(
             self.stateManager.saveStatesToScene
@@ -288,6 +252,46 @@ class ExportClass(object):
         if not self.stateManager.standalone:
             self.b_add.clicked.connect(self.addObjects)
         self.b_pathLast.clicked.connect(self.showLastPathMenu)
+
+    @err_catcher(name=__name__)
+    def initializeContextBasedSettings(self):
+        context = self.getCurrentContext()
+        if (
+            context.get("type") == "shot"
+            and "sequence" in context
+        ):
+            self.refreshShotCameras()
+            shotName = self.core.entities.getShotName(context)
+            idx = self.cb_sCamShot.findText(shotName)
+            if idx != -1:
+                self.cb_sCamShot.setCurrentIndex(idx)
+
+        startFrame, endFrame = self.getFrameRange("Scene")
+        if startFrame is not None:
+            self.sp_rangeStart.setValue(startFrame)
+
+        if endFrame is not None:
+            self.sp_rangeEnd.setValue(endFrame)
+
+        if context.get("type") == "asset":
+            self.setRangeType("Single Frame")
+            self.sp_rangeEnd.setValue(startFrame)
+        elif context.get("type") == "shot":
+            self.setRangeType("Shot")
+        elif self.stateManager.standalone:
+            self.setRangeType("Custom")
+        else:
+            self.setRangeType("Scene")
+
+        if context.get("task"):
+            self.setTaskname(context.get("task"))
+
+        getattr(self.core.appPlugin, "sm_export_updateObjects", lambda x: None)(
+            self
+        )
+
+        if not self.stateManager.standalone:
+            self.addObjects()
 
     @err_catcher(name=__name__)
     def showLastPathMenu(self):
@@ -580,6 +584,7 @@ class ExportClass(object):
         self.updateRange()
         self.refreshShotCameras()
         self.updateObjectList()
+
         if self.getTaskname():
             self.b_changeTask.setPalette(self.oldPalette)
 
@@ -629,6 +634,10 @@ class ExportClass(object):
         if not context:
             if self.getOutputType() == "ShotCam":
                 context = self.cb_sCamShot.currentData()
+                if self.core.getConfig("globals", "productTasks", config="project"):
+                    context["department"] = os.getenv("PRISM_SHOTCAM_DEPARTMENT", "Layout")
+                    context["task"] = os.getenv("PRISM_SHOTCAM_TASK", "Cameras")
+
             else:
                 fileName = self.core.getCurrentFileName()
                 context = self.core.getScenefileData(fileName)
@@ -928,6 +937,7 @@ class ExportClass(object):
                 "startframe": startFrame,
                 "endframe": endFrame,
                 "outputpath": outputName,
+                "version": hVersion,
             }
 
             result = self.core.callback("preExport", **kwargs)
@@ -940,6 +950,9 @@ class ExportClass(object):
 
                 if res and "outputName" in res:
                     outputName = res["outputName"]
+
+                if res and "version" in res:
+                    hVersion = res["version"]
 
             outputPath = os.path.dirname(outputName)
             if not os.path.exists(outputPath):

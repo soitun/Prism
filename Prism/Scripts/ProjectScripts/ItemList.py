@@ -105,6 +105,31 @@ class ItemList(QDialog, ItemList_ui.Ui_dlg_ItemList):
             icon = self.core.media.getColoredIcon(iconPath)
             self.b_next.setIcon(icon)
 
+            if self.mode is None:
+                self.w_taskPreset = QWidget()
+                self.lo_taskPreset = QHBoxLayout(self.w_taskPreset)
+                self.lo_taskPreset.setContentsMargins(0, 0, 0, 0)
+                self.chb_taskPreset = QCheckBox("Task Preset")
+                self.cb_taskPreset = QComboBox()
+                self.lo_taskPreset.addWidget(self.chb_taskPreset)
+                self.lo_taskPreset.addWidget(self.cb_taskPreset)
+                self.lo_taskPreset.addStretch()
+                self.cb_taskPreset.setEnabled(self.chb_taskPreset.isChecked())
+                self.chb_taskPreset.toggled.connect(self.cb_taskPreset.setEnabled)
+                self.chb_taskPreset.toggled.connect(lambda state: self.tw_steps.setEnabled(not state))
+                self.chb_taskPreset.toggled.connect(lambda state: self.chb_category.setEnabled(not state))
+                self.chb_taskPreset.toggled.connect(lambda state: self.enableOk())
+                if self.entity["type"] in ["asset"]:
+                    presets = self.core.projects.getAssetTaskPresets()
+                else:
+                    presets = self.core.projects.getShotTaskPresets()
+
+                if presets:
+                    for preset in presets:
+                        self.cb_taskPreset.addItem(preset.get("name", ""), preset)
+
+                    self.verticalLayout.insertWidget(2, self.w_taskPreset)
+
         if self.mode == "tasks":
             self.e_tasks = QLineEdit()
             allowAdditionalTasks = self.core.getConfig("globals", "allowAdditionalTasks", config="project", dft=True)
@@ -177,6 +202,8 @@ class ItemList(QDialog, ItemList_ui.Ui_dlg_ItemList):
         enabled = len(self.tw_steps.selectedItems()) > 0
         if self.mode == "tasks" and self.e_tasks.text():
             enabled = True
+        elif self.getTaskPreset():
+            enabled = True
 
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enabled)
         if self.core.appPlugin.pluginName != "Standalone" or self.mode != "tasks":
@@ -185,10 +212,30 @@ class ItemList(QDialog, ItemList_ui.Ui_dlg_ItemList):
                 "shot",
                 "sequence",
             ] and self.mode is None:
-                nextEnabled = len([x for x in self.tw_steps.selectedItems() if x.column() == 0]) == 1
+                nextEnabled = len([x for x in self.tw_steps.selectedItems() if x.column() == 0]) == 1 and not self.getTaskPreset()
                 self.b_next.setEnabled(nextEnabled)
             elif self.mode == "tasks":
                 self.b_next.setEnabled(bool(enabled or self.e_tasks.text()))
+
+    @err_catcher(name=__name__)
+    def getTaskPreset(self):
+        if not isinstance(self.entity, collections.Mapping):
+            return
+
+        if self.entity["type"] not in [
+            "asset",
+            "shot",
+            "sequence",
+        ]:
+            return
+
+        if self.mode is not None:
+            return
+
+        if not self.chb_taskPreset.isChecked():
+            return
+
+        return self.cb_taskPreset.currentData()
 
     @err_catcher(name=__name__)
     def createDepartment(self):
@@ -245,12 +292,19 @@ class ItemList(QDialog, ItemList_ui.Ui_dlg_ItemList):
                 if self.entity == "passes":
                     pass
                 else:
-                    steps = []
-                    for i in self.tw_steps.selectedItems():
-                        if i.column() == 0:
-                            steps.append(i.data(Qt.UserRole)["abbreviation"])
+                    preset = self.getTaskPreset()
+                    if preset:
+                        createdDirs = self.core.entities.createTasksFromPreset(self.entity, preset)
+                        if createdDirs:
+                            self.core.pb.sceneBrowser.refreshDepartments()
 
-                    self.core.pb.sceneBrowser.createSteps(self.entity, steps, createTask=self.chb_category.isChecked())
+                    else:
+                        steps = []
+                        for i in self.tw_steps.selectedItems():
+                            if i.column() == 0:
+                                steps.append(i.data(Qt.UserRole)["abbreviation"])
+
+                        self.core.pb.sceneBrowser.createSteps(self.entity, steps, createTask=self.chb_category.isChecked())
             elif self.mode == "tasks":
                 tasks = []
                 for item in self.tw_steps.selectedItems():

@@ -74,7 +74,7 @@ class EntityWidget(QWidget):
 
     @err_catcher(name=__name__)
     def setupUi(self):
-        pageNames = ["Assets", "Shots"]
+        pageNames = [self.core.tr("Assets"), self.core.tr("Shots")]
 
         self.sw_tabs = QStackedWidget()
         self.w_header = QWidget()
@@ -162,7 +162,7 @@ class EntityWidget(QWidget):
     @err_catcher(name=__name__)
     def getPage(self, pageName):
         for page in self.pages:
-            if page.objectName() == pageName:
+            if page.objectName() == self.core.tr(pageName):
                 return page
 
     @err_catcher(name=__name__)
@@ -266,9 +266,9 @@ class EntityPage(QWidget):
         self.entityPreviewHeight = 60
         self.itemWidgets = []
         self.setObjectName(self.pageName)
-        if pageName == "Assets":
+        if pageName == self.core.tr("Assets"):
             self.entityType = "asset"
-        elif pageName == "Shots":
+        elif pageName == self.core.tr("Shots"):
             self.entityType = "shot"
 
         self.setupUi()
@@ -658,6 +658,12 @@ class EntityPage(QWidget):
                     shots[seqName][shotName].append(shotPath)
 
         sequences = self.core.sortNatural(shots.keys())
+
+        iconPath = os.path.join(
+            self.core.prismRoot, "Scripts", "UserInterfacesPrism", "folder.png"
+        )
+        folderIcon = self.core.media.getColoredIcon(iconPath)
+
         iconPath = os.path.join(
             self.core.prismRoot, "Scripts", "UserInterfacesPrism", "sequence.png"
         )
@@ -668,24 +674,32 @@ class EntityPage(QWidget):
         )
         shotIcon = self.core.media.getColoredIcon(iconPath)
         usePreview = self.core.getConfig("browser", "showEntityPreviews", config="user", dft=True)
-        for seqName in sequences:
-            seqItem = QTreeWidgetItem([seqName])
-            seqItem.setData(0, Qt.UserRole, {"type": "shot", "sequence": seqName, "shot": "_sequence"})
-            seqItem.setIcon(0, seqIcon)
-            self.tw_tree.addTopLevelItem(seqItem)
-            if seqName in self.expandedItems or (
-                self.e_search.isVisible() and self.e_search.text()
-            ):
-                seqItem.setExpanded(True)
 
-            for shot in self.core.sortNatural(shots[seqName]):
+        seqItems = {}
+        for sequence in sequences:
+            parent = self.tw_tree.invisibleRootItem()
+            seqName = ""
+            seqParts = sequence.split("__") if os.getenv("PRISM_USE_SEQUENCE_FOLDERS") == "1" else [sequence]
+            for idx, seqPart in enumerate(seqParts):
+                seqName = (seqName + "/" + seqPart).strip("/")
+                if seqName in seqItems:
+                    item = seqItems[seqName]
+                else:
+                    icon = seqIcon if idx == (len(seqParts) - 1) else folderIcon
+                    item = self.addSequenceItem(seqPart, parent=parent, icon=icon)
+                    seqItems[seqName] = item
+
+                parent = item
+
+            seqItem = parent
+            for shot in self.core.sortNatural(shots[sequence]):
                 data = [shot]
                 sItem = QTreeWidgetItem(data)
                 entity = {
                     "type": "shot",
-                    "sequence": seqName,
+                    "sequence": sequence,
                     "shot": shot,
-                    "paths": shots[seqName][shot],
+                    "paths": shots[sequence][shot],
                 }
                 sItem.setData(
                     0,
@@ -731,6 +745,19 @@ class EntityPage(QWidget):
         if not wasBlocked:
             self.tw_tree.blockSignals(False)
             self.itemChanged.emit(self.tw_tree.currentItem())
+
+    @err_catcher(name=__name__)
+    def addSequenceItem(self, seqName, parent, icon):
+        seqItem = QTreeWidgetItem([seqName])
+        seqItem.setData(0, Qt.UserRole, {"type": "shot", "sequence": seqName, "shot": "_sequence"})
+        seqItem.setIcon(0, icon)
+        parent.addChild(seqItem)
+        if seqName in self.expandedItems or (
+            self.e_search.isVisible() and self.e_search.text()
+        ):
+            seqItem.setExpanded(True)
+
+        return seqItem
 
     @err_catcher(name=__name__)
     def omitEntity(self, entity):
@@ -985,6 +1012,9 @@ class EntityPage(QWidget):
 
                 self.newItem.w_meta.save(data)
 
+                if self.newItem.chb_taskPreset.isChecked():
+                    self.core.entities.createTasksFromPreset(data, self.newItem.cb_taskPreset.currentData())
+
             self.refreshEntities()
             self.navigate(data=data)
             if not result or not result.get("entity", "") or result.get("existed", ""):
@@ -1165,20 +1195,40 @@ class EntityPage(QWidget):
             for shot in data:
                 for idx in range(self.tw_tree.topLevelItemCount()):
                     csItem = self.tw_tree.topLevelItem(idx)
-                    if csItem.data(0, Qt.UserRole).get("sequence") == shot.get("sequence"):
-                        if not shot.get("shot"):
-                            csItem.setSelected(True)
-                            sItem = csItem
-                        else:
-                            csItem.setExpanded(True)
-                            for childIdx in range(csItem.childCount()):
-                                shotItem = csItem.child(childIdx)
-                                if shotItem.data(0, Qt.UserRole).get("shot") == shot["shot"]:
-                                    shotItem.setSelected(True)
-                                    break
-                            else:
+                    seqParts = shot.get("sequence", "").split("__") if os.getenv("PRISM_USE_SEQUENCE_FOLDERS") == "1" else [shot.get("sequence")]
+                    if len(seqParts) > 1 and csItem.data(0, Qt.UserRole).get("sequence") == seqParts[0]:
+                        csItem.setExpanded(True)
+                        for fIdx in range(csItem.childCount()):
+                            seqItem = csItem.child(fIdx)
+                            if seqItem.data(0, Qt.UserRole).get("sequence") == seqParts[1]:
+                                if not shot.get("shot"):
+                                    seqItem.setSelected(True)
+                                    sItem = seqItem
+                                else:
+                                    seqItem.setExpanded(True)
+                                    for childIdx in range(seqItem.childCount()):
+                                        shotItem = seqItem.child(childIdx)
+                                        if shotItem.data(0, Qt.UserRole).get("shot") == shot["shot"]:
+                                            shotItem.setSelected(True)
+                                            break
+                                    else:
+                                        seqItem.setSelected(True)
+                                        sItem = seqItem
+                    else:
+                        if csItem.data(0, Qt.UserRole).get("sequence") == shot.get("sequence"):
+                            if not shot.get("shot"):
                                 csItem.setSelected(True)
                                 sItem = csItem
+                            else:
+                                csItem.setExpanded(True)
+                                for childIdx in range(csItem.childCount()):
+                                    shotItem = csItem.child(childIdx)
+                                    if shotItem.data(0, Qt.UserRole).get("shot") == shot["shot"]:
+                                        shotItem.setSelected(True)
+                                        break
+                                else:
+                                    csItem.setSelected(True)
+                                    sItem = csItem
 
             if sItem:
                 self.tw_tree.setCurrentItem(sItem)

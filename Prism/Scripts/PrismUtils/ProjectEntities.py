@@ -79,7 +79,7 @@ class ProjectEntities(object):
 
     @err_catcher(name=__name__)
     def isAssetOmitted(self, entity):
-        omitted = entity["asset_path"] in self.omittedEntities["asset"]
+        omitted = entity["asset_path"].replace("\\", "/") in [a.replace("\\", "/") for a in self.omittedEntities["asset"]]
         return omitted
 
     @err_catcher(name=__name__)
@@ -449,7 +449,7 @@ class ProjectEntities(object):
         return {"dependencies": deps, "externalFiles": extFiles}
 
     @err_catcher(name=__name__)
-    def createEntity(self, entity, dialog=None, frameRange=None, silent=False):
+    def createEntity(self, entity, dialog=None, frameRange=None, silent=False, preview=None):
         if entity["type"] == "asset":
             result = self.createAsset(entity, dialog=dialog)
         elif entity["type"] == "assetFolder":
@@ -461,6 +461,9 @@ class ProjectEntities(object):
 
         if not result:
             return {}
+
+        if preview:
+            self.core.entities.setEntityPreview(entity, preview)
 
         if result.get("existed"):
             if entity["type"] in ["asset", "assetFolder"]:
@@ -681,6 +684,17 @@ class ProjectEntities(object):
             return fullNames[0]
 
     @err_catcher(name=__name__)
+    def getDepartmentAbbreviation(self, entity, department):
+        if entity == "asset":
+            deps = self.core.projects.getAssetDepartments()
+        elif entity in ["shot", "sequence"]:
+            deps = self.core.projects.getShotDepartments()
+
+        abbrvs = [dep["abbreviation"] for dep in deps if dep["name"] == department]
+        if abbrvs:
+            return abbrvs[0]
+
+    @err_catcher(name=__name__)
     def getDefaultTasksForDepartment(self, entity, department):
         if entity == "asset":
             existingDeps = self.core.projects.getAssetDepartments()
@@ -733,6 +747,32 @@ class ProjectEntities(object):
             logger.debug("task already exists: %s" % catPath)
 
         return catPath
+
+    @err_catcher(name=__name__)
+    def createTasksFromPreset(self, entity, preset=None, presetName=None):
+        if not preset and presetName:
+            if entity.get("type") == "asset":
+                presets = self.core.projects.getAssetTaskPresets()
+            else:
+                presets = self.core.projects.getShotTaskPresets()
+
+            for p in presets:
+                if p.get("name") == presetName:
+                    preset = p
+                    break
+            else:
+                self.core.popup("Invalid preset name: %s" % presetName)
+                return
+
+        logger.debug("creating tasks from preset - entity: %s - preset: %s" % (entity, preset))
+        paths = []
+        for dep in preset.get("departments", []):
+            abbrv = self.getDepartmentAbbreviation(entity.get("type"), dep["name"])
+            self.createDepartment(abbrv, entity, createCat=False)
+            for task in dep.get("tasks", []):
+                paths.append(self.createCategory(entity, abbrv, task))
+
+        return paths
 
     @err_catcher(name=__name__)
     def getTaskDataPath(self, entity, department, task):
@@ -790,10 +830,12 @@ class ProjectEntities(object):
                 return False
 
             if entityType == "asset":
-                if entityName not in omits:
+                if entityName.replace("\\", "/") in omits:
+                    omits.remove(entityName.replace("\\", "/"))
+                elif entityName.replace("/", "\\") in omits:
+                    omits.remove(entityName.replace("/", "\\"))
+                else:
                     return False
-
-                omits.remove(entityName)
 
             elif entityType == "shot":
                 if entity["sequence"] not in omits:
@@ -1378,6 +1420,17 @@ class ProjectEntities(object):
             if etype:
                 data["type"] = etype
 
+        data["locations"] = {}
+        glbPath = self.core.convertPath(fileName, "global")
+        if os.path.exists(glbPath):
+            data["locations"]["global"] = glbPath
+
+        if (
+            self.core.useLocalFiles
+            and os.path.exists(self.core.convertPath(fileName, "local"))
+        ):
+            data["locations"]["local"] = self.core.convertPath(fileName, "local")
+
         if preview:
             prvPath = os.path.splitext(fileName)[0] + "preview.jpg"
             if os.path.exists(prvPath):
@@ -1951,6 +2004,7 @@ class ProjectEntities(object):
             self.core.copySceneFile(target, backup)
 
         self.core.copySceneFile(filename, target)
+        logger.debug("backed up scenefile: %s" % target)
 
     @err_catcher(name=__name__)
     def addEntityAction(self, key, types, function, label):

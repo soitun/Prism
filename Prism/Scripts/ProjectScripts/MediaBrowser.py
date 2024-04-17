@@ -150,11 +150,11 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         self.w_preview.layout().addStretch()
         self.splitter.addWidget(self.w_preview)
 
-        self.lw_task.setAcceptDrops(True)
-        self.lw_task.dragEnterEvent = self.taskDragEnterEvent
-        self.lw_task.dragMoveEvent = self.taskDragMoveEvent
-        self.lw_task.dragLeaveEvent = self.taskDragLeaveEvent
-        self.lw_task.dropEvent = self.taskDropEvent
+        self.tw_identifier.setAcceptDrops(True)
+        self.tw_identifier.dragEnterEvent = self.taskDragEnterEvent
+        self.tw_identifier.dragMoveEvent = self.taskDragMoveEvent
+        self.tw_identifier.dragLeaveEvent = self.taskDragLeaveEvent
+        self.tw_identifier.dropEvent = self.taskDropEvent
 
         if self.projectBrowser and len(self.projectBrowser.locations) > 1:
             self.VersionDelegate = VersionDelegate(self)
@@ -190,13 +190,13 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         self.chb_autoUpdate.stateChanged.connect(self.updateChanged)
         self.b_refresh.clicked.connect(self.refreshRender)
 
-        self.lw_task.itemSelectionChanged.connect(self.taskClicked)
+        self.tw_identifier.itemSelectionChanged.connect(self.taskClicked)
         self.lw_version.itemSelectionChanged.connect(self.versionClicked)
         self.lw_version.mmEvent = self.lw_version.mouseMoveEvent
         self.lw_version.mouseMoveEvent = lambda x: self.w_preview.mediaPlayer.mouseDrag(x, self.lw_version)
         self.lw_version.itemDoubleClicked.connect(self.onVersionDoubleClicked)
-        self.lw_task.customContextMenuRequested.connect(
-            lambda x: self.rclList(x, self.lw_task)
+        self.tw_identifier.customContextMenuRequested.connect(
+            lambda x: self.rclList(x, self.tw_identifier)
         )
         self.lw_version.customContextMenuRequested.connect(
             lambda x: self.rclList(x, self.lw_version)
@@ -279,11 +279,11 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
 
     @err_catcher(name=__name__)
     def getCurrentIdentifier(self):
-        items = self.lw_task.selectedItems()
+        items = self.tw_identifier.selectedItems()
         if not items:
             return
 
-        return items[0].data(Qt.UserRole)
+        return items[0].data(0, Qt.UserRole)
 
     @err_catcher(name=__name__)
     def getCurrentVersion(self):
@@ -338,42 +338,79 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
             if identifier:
                 curTask = identifier.get("displayName")
 
-        wasBlocked = self.lw_task.signalsBlocked()
+        wasBlocked = self.tw_identifier.signalsBlocked()
         if not wasBlocked:
-            self.lw_task.blockSignals(True)
+            self.tw_identifier.blockSignals(True)
 
-        self.lw_task.clear()
+        self.tw_identifier.clear()
 
         mediaTasks = self.getMediaTasks()
         if mediaTasks:
-            addedItems = []
-            for pType in ["3d", "2d", "playblast", "external"]:
-                for task in sorted(mediaTasks[pType], key=lambda x: x["displayName"]):
-                    if task["displayName"] in addedItems:
-                        continue
+            useTasks = self.core.getConfig("globals", "productTasks", config="project")
+            if useTasks:
+                items = {}
+                for pType in ["3d", "2d", "playblast", "external"]:
+                    for task in sorted(mediaTasks[pType], key=lambda x: x["displayName"]):
+                        useDep = os.getenv("PRISM_USE_DEPARTMENTS_FOR_PRODUCTS", "1") == "1"
+                        if useDep:
+                            dep = task.get("department") or "unknown"
+                            if dep not in items:
+                                item = QTreeWidgetItem([dep])
+                                items[dep] = {"item": item, "tasks": {}}
+                                self.tw_identifier.invisibleRootItem().addChild(item)
 
-                    item = QListWidgetItem(task["displayName"])
-                    addedItems.append(task["displayName"])
-                    item.setData(Qt.UserRole, task)
-                    self.lw_task.addItem(item)
+                            taskName = task.get("task") or "unknown"
+                            if taskName not in items[dep]["tasks"]:
+                                item = QTreeWidgetItem([taskName])
+                                items[dep]["tasks"][taskName] = {"item": item}
+                                items[dep]["item"].addChild(item)
 
-        if self.lw_task.count() > 0:
+                            parent = items[dep]["tasks"][taskName]["item"]
+                        else:
+                            taskName = task.get("task") or "unknown"
+                            if taskName not in items:
+                                item = QTreeWidgetItem([taskName])
+                                items[taskName] = {"item": item}
+                                self.tw_identifier.invisibleRootItem().addChild(item)
+
+                            parent = items[taskName]["item"]
+
+                        # if task["displayName"] in addedItems:
+                        #     continue
+
+                        item = QTreeWidgetItem([task["displayName"]])
+                        item.setData(0, Qt.UserRole, task)
+                        parent.addChild(item)
+            else:
+                addedItems = []
+                for pType in ["3d", "2d", "playblast", "external"]:
+                    for task in sorted(mediaTasks[pType], key=lambda x: x["displayName"]):
+                        if task["displayName"] in addedItems:
+                            continue
+
+                        item = QTreeWidgetItem([task["displayName"]])
+                        addedItems.append(task["displayName"])
+                        item.setData(0, Qt.UserRole, task)
+                        parent = self.tw_identifier.invisibleRootItem()
+                        parent.addChild(item)
+
+        if self.tw_identifier.topLevelItemCount() > 0:
             selectFirst = True
             if restoreSelection and curTask:
-                items = self.lw_task.findItems(curTask, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive))
+                items = self.tw_identifier.findItems(curTask, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive ^ Qt.MatchRecursive))
                 if items:
-                    self.lw_task.setCurrentItem(items[0])
+                    self.tw_identifier.setCurrentItem(items[0])
                     selectFirst = False
 
             if selectFirst:
-                mIdx = self.lw_task.findItems("main", Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive))
+                mIdx = self.tw_identifier.findItems("main", Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive ^ Qt.MatchRecursive))
                 if len(mIdx) > 0:
-                    self.lw_task.setCurrentItem(mIdx[0])
+                    self.tw_identifier.setCurrentItem(mIdx[0])
                 else:
-                    self.lw_task.setCurrentRow(0)
+                    self.tw_identifier.setCurrentItem(self.tw_identifier.topLevelItem(0))
 
         if not wasBlocked:
-            self.lw_task.blockSignals(False)
+            self.tw_identifier.blockSignals(False)
             self.updateVersions(restoreSelection=True)
 
     @err_catcher(name=__name__)
@@ -398,8 +435,8 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         
         self.lw_version.clear()
         selectFirst = True
-        if len(self.lw_task.selectedItems()) == 1:
-            identifier = self.getCurrentIdentifier()
+        identifier = self.getCurrentIdentifier()
+        if len(self.tw_identifier.selectedItems()) == 1 and identifier:
             location = self.w_entities.getCurrentLocation()
             versions = self.core.mediaProducts.getVersionsFromIdentifier(
                 identifier=identifier, locations=[location]
@@ -423,16 +460,18 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
                 if versionData["version"] == "master":
                     vdata["version"] = "master"
 
+                locs = versionData["locations"]
                 versionData.update(vdata)
-                if len(locs) > 1:
-                    locStr = ", ".join([loc for loc in versionData.get("locations", []) if loc != "global"])
+                versionData["locations"] = locs
+                if len(locs) > 1 or len(versionData.get("locations", {})) > 1 or ("global" not in versionData.get("locations", {})):
+                    locStr = ", ".join([loc for loc in versionData.get("locations", {}) if ((loc and loc != "global") or len(versionData.get("locations", {})) > 1)])
                     if locStr:
                         versionName += " (%s)" % locStr
 
                 item = QListWidgetItem(versionName)
                 item.setData(Qt.UserRole, versionData)
                 if len(locs) > 1:
-                    item.setToolTip(", ".join(versionData.get("locations", [])))
+                    item.setToolTip(", ".join(versionData.get("locations", {})))
 
                 self.lw_version.addItem(item)
 
@@ -451,8 +490,8 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
     @err_catcher(name=__name__)
     def getSelectedContexts(self):
         contexts = []
-        if len(self.lw_task.selectedItems()) > 1:
-            contexts = self.lw_task.selectedItems()
+        if len(self.tw_identifier.selectedItems()) > 1:
+            contexts = self.tw_identifier.selectedItems()
         elif len(self.lw_version.selectedItems()) > 1:
             contexts = self.lw_version.selectedItems()
         else:
@@ -680,29 +719,29 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
     @err_catcher(name=__name__)
     def showRender(self, entity=None, identifier=None, version=None, aov=None, source=None, filelayer=None):
         prevIdf = self.getCurrentIdentifier()
-        self.lw_task.blockSignals(True)
+        self.tw_identifier.blockSignals(True)
         if entity:
             self.navigateToEntity(entity)
 
         if not identifier:
-            self.lw_task.blockSignals(False)
+            self.tw_identifier.blockSignals(False)
             if prevIdf != self.getCurrentIdentifier() or not self.initialized:
                 self.taskClicked()
 
             return
 
-        matches = self.lw_task.findItems(
-            identifier, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive)
+        matches = self.tw_identifier.findItems(
+            identifier, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive ^ Qt.MatchRecursive)
         )
         if not matches:
-            self.lw_task.blockSignals(False)
+            self.tw_identifier.blockSignals(False)
             if prevIdf != self.getCurrentIdentifier() or not self.initialized:
                 self.taskClicked()
 
             return
 
-        self.lw_task.setCurrentItem(matches[0])
-        self.lw_task.blockSignals(False)
+        self.tw_identifier.setCurrentItem(matches[0])
+        self.tw_identifier.blockSignals(False)
         prevVersion = self.getCurrentVersion()
         self.lw_version.blockSignals(True)
         if prevIdf != self.getCurrentIdentifier():
@@ -744,7 +783,10 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         cpos = QCursor.pos()
         item = lw.itemAt(pos)
         if item is not None:
-            itemName = item.text()
+            if lw == self.tw_identifier:
+                itemName = item.text(0)
+            else:
+                itemName = item.text()
         else:
             itemName = ""
 
@@ -752,11 +794,16 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         if not entity:
             return False
 
-        if lw == self.lw_task:
+        if lw == self.tw_identifier:
+            path = None
             if itemName:
-                path = item.data(Qt.UserRole)["path"]
-            else:
+                data = item.data(0, Qt.UserRole)
+                if data:
+                    path = data.get("path")
+            
+            if not path:
                 path = self.core.mediaProducts.getIdentifierPathFromEntity(entity)
+
         elif lw == self.lw_version:
             if itemName:
                 data = item.data(Qt.UserRole)
@@ -769,7 +816,7 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
                 path = self.core.mediaProducts.getVersionPathFromIdentifier(identifier)
 
         rcmenu = QMenu(self)
-        if lw == self.lw_task:
+        if lw == self.tw_identifier:
             refresh = self.updateTasks
             if entity.get("type") in ["asset", "shot"]:
                 depAct = QAction("Create Identifier...", self)
@@ -869,7 +916,6 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
 
             curLoc = self.core.mediaProducts.getLocationFromPath(path)
             locMenu = QMenu("Copy to", self)
-            rcmenu.addMenu(locMenu)
             locs = self.core.paths.getRenderProductBasePaths()
             for loc in locs:
                 if loc == curLoc:
@@ -878,6 +924,9 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
                 copAct = QAction(loc, self)
                 copAct.triggered.connect(lambda x=None, l=loc: self.copyToLocation(path, l))
                 locMenu.addAction(copAct)
+
+            if not locMenu.isEmpty():
+                rcmenu.addMenu(locMenu)
 
         self.core.callback(
             name="openPBListContextMenu",
@@ -992,14 +1041,18 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
             mediaType = "playblasts"
             suffix = " (playblast)"
 
+        if self.core.getConfig("globals", "productTasks", config="project"):
+            curEntity["department"] = "unknown"
+            curEntity["task"] = "unknown"
+
         self.core.mediaProducts.createIdentifier(entity=curEntity, identifier=itemName, identifierType=mediaType)
         self.updateTasks()
         if itemName is not None:
-            matches = self.lw_task.findItems(
-                itemName + suffix, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive)
+            matches = self.tw_identifier.findItems(
+                itemName + suffix, Qt.MatchFlag(Qt.MatchExactly & Qt.MatchCaseSensitive ^ Qt.MatchRecursive)
             )
             if matches:
-                self.lw_task.setCurrentItem(matches[0])
+                self.tw_identifier.setCurrentItem(matches[0])
 
     @err_catcher(name=__name__)
     def createVersionDlg(self):
@@ -1025,6 +1078,10 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
         itemName = self.newItem.e_item.text()
         curEntity = self.getCurrentEntity()
         identifier = self.getCurrentIdentifier()
+        if self.core.getConfig("globals", "productTasks", config="project"):
+            curEntity["department"] = identifier.get("department", "unknown")
+            curEntity["task"] = identifier.get("task", "unknown")
+
         self.core.mediaProducts.createVersion(
             entity=curEntity,
             identifier=identifier["identifier"],
@@ -1062,7 +1119,7 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
     def taskDragMoveEvent(self, e):
         if e.mimeData().hasUrls():
             e.accept()
-            self.lw_task.setStyleSheet(
+            self.tw_identifier.setStyleSheet(
                 "QWidget { border-style: dashed; border-color: rgb(100, 200, 100);  border-width: 2px; }"
             )
         else:
@@ -1070,12 +1127,12 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
 
     @err_catcher(name=__name__)
     def taskDragLeaveEvent(self, e):
-        self.lw_task.setStyleSheet("")
+        self.tw_identifier.setStyleSheet("")
 
     @err_catcher(name=__name__)
     def taskDropEvent(self, e):
         if e.mimeData().hasUrls():
-            self.lw_task.setStyleSheet("")
+            self.tw_identifier.setStyleSheet("")
             e.setDropAction(Qt.LinkAction)
             e.accept()
 
@@ -1198,12 +1255,15 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
     @err_catcher(name=__name__)
     def getCurRenders(self):
         renders = []
-        sTasks = self.lw_task.selectedItems()
+        sTasks = self.tw_identifier.selectedItems()
         sVersions = self.lw_version.selectedItems()
 
         if len(sTasks) > 1:
             for identifierItem in sTasks:
-                identifier = identifierItem.data(Qt.UserRole)
+                identifier = identifierItem.data(0, Qt.UserRole)
+                if not identifier:
+                    continue
+
                 versions = self.core.mediaProducts.getVersionsFromIdentifier(
                     identifier=identifier
                 )
@@ -1223,7 +1283,7 @@ class MediaBrowser(QWidget, MediaBrowser_ui.Ui_w_mediaBrowser):
                         else:
                             context = aovs[0]
 
-                renders.append(context)
+                    renders.append(context)
 
         elif len(sVersions) > 1:
             for versionItem in sVersions:
@@ -1570,7 +1630,7 @@ class MediaVersionPlayer(QWidget):
             return
 
         identifier = self.origin.getCurrentIdentifier()
-        if identifier["mediaType"] != "3drenders":
+        if not identifier or identifier["mediaType"] != "3drenders":
             return
 
         data = self.getCurrentAOV()
@@ -1643,9 +1703,14 @@ class MediaVersionPlayer(QWidget):
         self.activateWindow()
         itemName = self.newItem.e_item.text()
         curEntity = self.origin.getCurrentEntity()
-        identifier = self.origin.getCurrentIdentifier().get("identifier")
+        identifier = self.origin.getCurrentIdentifier()
+        identifierName = identifier.get("identifier")
         version = self.origin.getCurrentVersion().get("version")
-        self.core.mediaProducts.createAov(entity=curEntity, identifier=identifier, version=version, aov=itemName)
+        if self.core.getConfig("globals", "productTasks", config="project"):
+            curEntity["department"] = identifier.get("department", "unknown")
+            curEntity["task"] = identifier.get("task", "unknown")
+
+        self.core.mediaProducts.createAov(entity=curEntity, identifier=identifierName, version=version, aov=itemName)
         self.updateLayers()
         if itemName is not None:
             idx = self.cb_layer.findText(itemName)
@@ -1941,7 +2006,6 @@ class MediaPlayer(QWidget):
                     pass
 
         self.videoReaders = {}
-
         contexts = self.getSelectedContexts()
         if len(contexts) > 1:
             self.l_info.setText("\nMultiple items selected\n")
@@ -1951,7 +2015,6 @@ class MediaPlayer(QWidget):
             if contexts:
                 mediaFiles = self.getFilesFromContext(contexts[0])
                 validFiles = self.core.media.filterValidMediaFiles(mediaFiles)
-
                 if validFiles:
                     validFiles = sorted(validFiles, key=lambda x: x if "cryptomatte" not in os.path.basename(x) else "zzz" + x)
                     baseName, extension = os.path.splitext(validFiles[0])
@@ -2185,7 +2248,11 @@ class MediaPlayer(QWidget):
         else:
             imgFile = os.path.join(fbFolder, "noFileSmall.jpg")
 
-        return self.core.media.getPixmapFromPath(imgFile)
+        pmap = self.core.media.getPixmapFromPath(imgFile)
+        if not pmap:
+            pmap = QPixmap()
+
+        return pmap
 
     @err_catcher(name=__name__)
     def moveLoadingLabel(self):
@@ -2796,12 +2863,13 @@ class MediaPlayer(QWidget):
 
                         comd = [progPath, filePath]
 
-        if comd != []:
+        if comd:
             with open(os.devnull, "w") as f:
                 logger.debug("launching: %s" % comd)
                 try:
                     subprocess.Popen(comd, stdin=subprocess.PIPE, stdout=f, stderr=f)
                 except:
+                    comd = "%s %s" % (comd[0], comd[1])
                     try:
                         subprocess.Popen(
                             comd, stdin=subprocess.PIPE, stdout=f, stderr=f, shell=True
@@ -3052,7 +3120,7 @@ class VersionDelegate(QStyledItemDelegate):
         offset = 0
         if len(self.origin.projectBrowser.locations) > 1:
             for location in reversed(self.origin.projectBrowser.locations):
-                if location.get("name") not in data.get("locations", []):
+                if location.get("name") not in data.get("locations", {}):
                     continue
 
                 if "icon" not in location:

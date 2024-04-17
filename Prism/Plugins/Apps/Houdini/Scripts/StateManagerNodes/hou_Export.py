@@ -1307,6 +1307,10 @@ class ExportClass(object):
 
         elif self.getOutputType() == "ShotCam":
             entityData = self.cb_sCamShot.currentData()
+            if self.core.getConfig("globals", "productTasks", config="project"):
+                entityData["department"] = os.getenv("PRISM_SHOTCAM_DEPARTMENT", "Layout")
+                entityData["task"] = os.getenv("PRISM_SHOTCAM_TASK", "Cameras")
+
         else:
             fileName = self.core.getCurrentFileName()
             entityData = self.core.getScenefileData(fileName)
@@ -1431,6 +1435,7 @@ class ExportClass(object):
                 "startframe": startFrame,
                 "endframe": endFrame,
                 "outputpath": outputName,
+                "version": hVersion,
             }
 
             result = self.core.callback("preExport", **kwargs)
@@ -1443,6 +1448,9 @@ class ExportClass(object):
 
                 if res and "outputName" in res:
                     outputName = res["outputName"]
+
+                if res and "version" in res:
+                    hVersion = res["version"]
 
             outputPath = os.path.dirname(outputName)
             infoPath = self.core.products.getVersionInfoPathFromProductFilepath(
@@ -1661,9 +1669,22 @@ class ExportClass(object):
                 "startframe": startFrame,
                 "endframe": endFrame,
                 "outputpath": expandedOutputName,
+                "version": hVersion,
             }
 
-            self.core.callback("preExport", **kwargs)
+            result = self.core.callback("preExport", **kwargs)
+            for res in result:
+                if isinstance(res, dict) and res.get("cancel", False):
+                    return [
+                        self.state.text(0)
+                        + " - error - %s" % res.get("details", "preExport hook returned False")
+                    ]
+
+                if res and "outputName" in res:
+                    expandedOutputName = res["outputName"]
+
+                if res and "version" in res:
+                    hVersion = res["version"]
 
             infoPath = self.core.products.getVersionInfoPathFromProductFilepath(
                 expandedOutputName

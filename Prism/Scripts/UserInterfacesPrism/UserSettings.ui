@@ -39,7 +39,7 @@
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>597</width>
+         <width>457</width>
          <height>739</height>
         </rect>
        </property>
@@ -802,13 +802,6 @@
                    </spacer>
                   </item>
                  </layout>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="chb_highDPI">
-                 <property name="text">
-                  <string>HighDPI support (requires complete application restart) (experimental)</string>
-                 </property>
                 </widget>
                </item>
                <item>

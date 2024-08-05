@@ -56,15 +56,14 @@ startEnv = os.environ.copy()
 # check if python 2 or python 3 is used
 if sys.version[0] == "3":
     pVersion = 3
-    if sys.version[2] == "7":
-        pyLibs = "Python37"
-    elif sys.version[2] == "9":
-        pyLibs = "Python39"
-    else:
+    if sys.version_info.minor == 11:
+        pyLibs = "Python311"
+    elif sys.version_info.minor == 10:
         pyLibs = "Python310"
-else:
-    pVersion = 2
-    pyLibs = "Python27"
+    elif sys.version_info.minor == 9:
+        pyLibs = "Python39"
+    elif sys.version_info.minor == 7:
+        pyLibs = "Python37"
 
 prismRoot = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 prismLibs = os.getenv("PRISM_LIBS")
@@ -94,9 +93,9 @@ if sys.version[0] == "3":
         sys.path.append(py3LibPath)
 
     if platform.system() == "Windows":
-        sys.path.insert(0, os.path.join(py3LibPath, "win32"))
-        sys.path.insert(0, os.path.join(py3LibPath, "win32", "lib"))
-        pywinpath = os.path.join(prismLibs, "PythonLibs", pyLibs, "pywin32_system32")
+        sys.path.insert(0, os.path.join(pyLibPath, "win32"))
+        sys.path.insert(0, os.path.join(pyLibPath, "win32", "lib"))
+        pywinpath = os.path.join(pyLibPath, "pywin32_system32")
         sys.path.insert(0, pywinpath)
         os.environ["PATH"] = pywinpath + os.pathsep + os.environ["PATH"]
         if hasattr(os, "add_dll_directory") and os.path.exists(pywinpath):
@@ -107,10 +106,16 @@ try:
     from qtpy.QtGui import *
     from qtpy.QtWidgets import *
     from qtpy import API_NAME
-    try:
-        import shiboken2
-    except:
-        pass
+    if API_NAME == "PySide6":
+        try:
+            import shiboken6
+        except:
+            pass
+    else:
+        try:
+            import shiboken2
+        except:
+            pass
 except:
     if pVersion == 3:
         psLibs = "Python3"
@@ -121,10 +126,16 @@ except:
     from qtpy.QtGui import *
     from qtpy.QtWidgets import *
     from qtpy import API_NAME
-    try:
-        import shiboken2
-    except:
-        pass
+    if API_NAME == "PySide6":
+        try:
+            import shiboken6
+        except:
+            pass
+    else:
+        try:
+            import shiboken2
+        except:
+            pass
 
 from PrismUtils.Decorators import err_catcher
 from PrismUtils import (
@@ -168,7 +179,7 @@ class PrismCore:
 
         try:
             # set some general variables
-            self.version = "v2.0.4"
+            self.version = "v2.0.10"
             self.requiredLibraries = "v2.0.0"
             self.core = self
             self.preferredExtension = os.getenv("PRISM_CONFIG_EXTENSION", ".json")
@@ -177,23 +188,9 @@ class PrismCore:
 
             self.prismRoot = prismRoot.replace("\\", "/")
             self.prismLibs = prismLibs.replace("\\", "/")
-            self.pythonVersion = "Python39"
+            self.pythonVersion = "Python" + os.getenv("PRISM_PYTHON_VERSION", "3.11").replace(".", "")
 
             self.userini = self.getUserPrefConfigPath()
-
-            self.pluginPathApp = os.path.abspath(
-                os.path.join(__file__, os.pardir, os.pardir, "Plugins", "Apps")
-            )
-            self.pluginPathCustom = os.path.abspath(
-                os.path.join(__file__, os.pardir, os.pardir, "Plugins", "Custom")
-            )
-            self.pluginDirs = [
-                self.pluginPathApp,
-                self.pluginPathCustom,
-            ]
-            for path in self.pluginDirs:
-                sys.path.append(path)
-
             prjScriptPath = os.path.abspath(
                 os.path.join(__file__, os.pardir, "ProjectScripts")
             )
@@ -288,11 +285,30 @@ class PrismCore:
 
             oldSheet = os.path.join(self.prismRoot, "Scripts", "UserInterfacesPrism", "stylesheets", "qdarkstyle")
             self.registerStyleSheet(oldSheet)
+
+            self.pluginPathApp = os.path.abspath(
+                os.path.join(__file__, os.pardir, os.pardir, "Plugins", "Apps")
+            )
+            self.pluginPathCustom = os.path.abspath(
+                os.path.join(__file__, os.pardir, os.pardir, "Plugins", "Custom")
+            )
+            self.pluginDirs = [
+                self.pluginPathApp,
+                self.pluginPathCustom,
+            ]
+            if os.getenv("PRISM_LOAD_PLUGINS_FROM_DFT_PATH", "1") == "1":
+                self.pluginDirs.append(self.plugins.getDefaultPluginPath())
+
+            for path in self.pluginDirs:
+                sys.path.append(path)
+
             self.users.ensureUser()
             self.getUIscale()
             self.initializePlugins(app)
             atexit.register(self.onExit)
-            QApplication.instance().aboutToQuit.connect(self.onExit)
+            qapp = QApplication.instance()
+            if qapp:
+                qapp.aboutToQuit.connect(self.onExit)
 
             if sys.argv and sys.argv[-1] == "setupStartMenu":
                 if self.splashScreen:
@@ -354,7 +370,11 @@ class PrismCore:
         if os.getenv("PRISM_DATA_DIR"):
             return os.getenv("PRISM_DATA_DIR")
 
-        path = os.path.join(os.environ["PROGRAMDATA"], "Prism2")
+        if platform.system() == "Windows":
+            path = os.path.join(os.environ["PROGRAMDATA"], "Prism2")
+        elif platform.system() == "Linux":
+            path = "/var/lib/Prism2"
+
         return path
 
     @err_catcher(name=__name__)
@@ -523,7 +543,7 @@ class PrismCore:
             return
 
         self.autosave_msg = QMessageBox()
-        self.autosave_msg.setWindowTitle("Autosave")
+        self.autosave_msg.setWindowTitle("Prism Autosave")
         self.autosave_msg.setText("Autosave is disabled. Would you like to save now?")
         self.autosave_msg.addButton("Save", QMessageBox.YesRole)
         button = self.autosave_msg.addButton("Save new version", QMessageBox.YesRole)
@@ -809,26 +829,6 @@ class PrismCore:
     @err_catcher(name=__name__)
     def getUIscale(self):
         sFactor = 1
-        highdpi = self.getConfig("globals", "highdpi")
-        if highdpi:
-            from qtpy import QtCore
-            qtVers = [int(n) for n in QtCore.__version__.split(".")]
-
-            if qtVers[0] >= 5 and qtVers[1] >= 6:
-                screen = self.getQScreenGeo()
-                if screen:
-                    screenWidth, screenHeight = (
-                        screen.width(),
-                        screen.height(),
-                    )
-                    wFactor = screenWidth / 960.0
-                    hFactor = screenHeight / 540.0
-                    if abs(wFactor - 1) < abs(hFactor - 1):
-                        sFactor = wFactor
-                    else:
-                        sFactor = hFactor
-
-        # sFactor = QApplication.screens()[0].logicalDotsPerInch() / 96
         self.uiScaleFactor = sFactor
         return self.uiScaleFactor
 
@@ -928,7 +928,7 @@ License: GNU LGPL-3.0-or-later<br>
         self.popup(astr, title="About", severity="info")
 
     @err_catcher(name=__name__)
-    def sendFeedbackDlg(self):
+    def sendFeedbackDlg(self, state=None):
         fbDlg = PrismWidgets.EnterText()
         fbDlg.setModal(True)
         self.parentWindow(fbDlg)
@@ -955,7 +955,7 @@ License: GNU LGPL-3.0-or-later<br>
         fbDlg.layout().insertLayout(fbDlg.layout().count() - 1, fbDlg.lo_screenGrab)
         fbDlg.layout().insertItem(fbDlg.layout().count() - 1, fbDlg.sp_main)
 
-        size = QSize(fbDlg.size().width(), fbDlg.size().height() * 0.7)
+        size = QSize(fbDlg.size().width(), int(fbDlg.size().height() * 0.7))
         fbDlg.b_addScreenGrab.clicked.connect(lambda: self.attachScreenGrab(fbDlg, size=size))
         fbDlg.b_removeScreenGrab.clicked.connect(lambda: self.removeScreenGrab(fbDlg))
         fbDlg.b_removeScreenGrab.setVisible(False)
@@ -1006,7 +1006,7 @@ License: GNU LGPL-3.0-or-later<br>
     @err_catcher(name=__name__)
     def removeScreenGrab(self, dlg):
         dlg.screenGrab = None
-        dlg.l_screenGrab.setPixmap(None)
+        dlg.l_screenGrab.clear()
         dlg.b_addScreenGrab.setVisible(True)
         dlg.b_removeScreenGrab.setVisible(False)
         dlg.resize(dlg.origSize)
@@ -1020,6 +1020,8 @@ License: GNU LGPL-3.0-or-later<br>
             url = "https://prism-pipeline.com/docs/latest"
         elif location == "downloads":
             url = "https://prism-pipeline.com/downloads/"
+        elif location == "discord":
+            url = "https://prism-pipeline.com/discord/"
         else:
             url = location
 
@@ -1028,8 +1030,21 @@ License: GNU LGPL-3.0-or-later<br>
         webbrowser.open(url)
 
     @err_catcher(name=__name__)
+    def getCheckStateValue(self, checkState):
+        if hasattr(checkState, "value"):
+            return checkState.value
+        else:
+            return int(checkState)
+
+    @err_catcher(name=__name__)
     def isObjectValid(self, obj):
-        if "shiboken2" in globals():
+        if "shiboken6" in globals():
+            if not obj or not shiboken6.isValid(obj):
+                return False
+            else:
+                return True
+
+        elif "shiboken2" in globals():
             if not obj or not shiboken2.isValid(obj):
                 return False
             else:
@@ -1041,7 +1056,10 @@ License: GNU LGPL-3.0-or-later<br>
         if not sm:
             sm = getattr(self, "stateManagerInCreation", None)
 
-        if "shiboken2" in globals():
+        if "shiboken6" in globals():
+            if sm and not shiboken6.isValid(sm):
+                sm = None
+        elif "shiboken2" in globals():
             if sm and not shiboken2.isValid(sm):
                 sm = None
 
@@ -1317,6 +1335,7 @@ License: GNU LGPL-3.0-or-later<br>
         config=None,
         dft=None,
         location=None,
+        allowCache=True,
     ):
         return self.configs.getConfig(
             cat=cat,
@@ -1325,6 +1344,7 @@ License: GNU LGPL-3.0-or-later<br>
             config=config,
             dft=dft,
             location=location,
+            allowCache=allowCache,
         )
 
     @err_catcher(name=__name__)
@@ -1393,6 +1413,12 @@ License: GNU LGPL-3.0-or-later<br>
             else:
                 step = 1
 
+            if cData[0].strip().startswith("^"):
+                mode = "substract"
+                cData[0] = cData[0].strip().strip("^")
+            else:
+                mode = "add"
+
             se = [x for x in cData[0].split("-") if x]
             if len(se) == 2:
                 try:
@@ -1406,10 +1432,13 @@ License: GNU LGPL-3.0-or-later<br>
                     frame = int(se[0])
                 except:
                     continue
-                if frame not in rframes:
+                if frame not in rframes and mode == "add":
                     rframes.append(frame)
                     if len(rframes) > 10000:
                         return rframes
+
+                elif frame in rframes and mode == "substract":
+                    rframes.remove(frame)
 
                 continue
             else:
@@ -1422,10 +1451,12 @@ License: GNU LGPL-3.0-or-later<br>
                 end += 1
 
             for frame in range(start, end, step):
-                if frame not in rframes:
+                if frame not in rframes and mode == "add":
                     rframes.append(frame)
                     if len(rframes) > 10000:
                         return rframes
+                elif frame in rframes and mode == "substract":
+                    rframes.remove(frame)
 
         return rframes
 
@@ -1570,6 +1601,7 @@ License: GNU LGPL-3.0-or-later<br>
         pathDir = os.path.dirname(path)
         regName = ""
         seqFiles = []
+        siblings = []
 
         path = path.replace("$F4", "1001")
         for root, folders, files in os.walk(pathDir):
@@ -1816,7 +1848,7 @@ License: GNU LGPL-3.0-or-later<br>
                         return False
 
             if versionUp:
-                fnameData = self.getScenefileData(curfile)
+                fnameData = self.getScenefileData(curfile, getEntityFromPath=True)
                 if "department" not in fnameData:
                     title = "Could not save the file"
                     msg = "Couldn't get the required data from the current scenefile. Did you save it using Prism?\nUse the Project Browser to save your current scenefile with the correct name."
@@ -1860,8 +1892,20 @@ License: GNU LGPL-3.0-or-later<br>
             detailData = self.getScenefileData(curfile)
             if detailData.get("type") == "asset":
                 key = "assetScenefiles"
+                if "sequence" in detailData:
+                    del detailData["sequence"]
+
+                if "shot" in detailData:
+                    del detailData["shot"]
+
             elif detailData.get("type") == "shot":
                 key = "shotScenefiles"
+                if "asset" in detailData:
+                    del detailData["asset"]
+
+                if "asset_path" in detailData:
+                    del detailData["asset_path"]
+
             else:
                 key = None
 
@@ -1878,6 +1922,10 @@ License: GNU LGPL-3.0-or-later<br>
                 del detailData["user"]
             if "username" in detailData:
                 del detailData["username"]
+            if "description" in detailData:
+                del detailData["description"]
+            if "locations" in detailData:
+                del detailData["locations"]
         else:
             detailData = {}
 
@@ -1947,7 +1995,7 @@ License: GNU LGPL-3.0-or-later<br>
         return filepath
 
     @err_catcher(name=__name__)
-    def saveSceneInfo(self, filepath, details=None, preview=None, clean=True):
+    def saveSceneInfo(self, filepath, details=None, preview=None, clean=True, replace=False):
         details = details or {}
         if "username" not in details:
             details["username"] = self.username
@@ -1961,8 +2009,11 @@ License: GNU LGPL-3.0-or-later<br>
             details["dependencies"] = deps["dependencies"]
             details["externalFiles"] = deps["externalFiles"]
 
-        sData = self.getScenefileData(filepath)
-        sData.update(details)
+        if replace:
+            sData = details
+        else:
+            sData = self.getScenefileData(filepath)
+            sData.update(details)
 
         if clean:
             keys = ["filename", "extension", "path", "paths", "task_path"]
@@ -1971,7 +2022,7 @@ License: GNU LGPL-3.0-or-later<br>
                     del sData[key]
 
         infoPath = self.getVersioninfoPath(filepath)
-        self.setConfig(configPath=infoPath, data=sData)
+        self.setConfig(configPath=infoPath, data=sData, updateNestedData=not replace)
 
         if preview:
             self.core.entities.setScenePreview(filepath, preview)
@@ -2175,11 +2226,15 @@ License: GNU LGPL-3.0-or-later<br>
         return cdate
 
     @err_catcher(name=__name__)
-    def getFormattedDate(self, stamp):
+    def getFormattedDate(self, stamp=None, datetimeInst=None):
         if self.isStr(stamp):
             return ""
 
-        cdate = datetime.fromtimestamp(stamp)
+        if datetimeInst:
+            cdate = datetimeInst
+        else:
+            cdate = datetime.fromtimestamp(stamp)
+
         cdate = cdate.replace(microsecond=0)
         fmt = "%d.%m.%y,  %H:%M:%S"
         if os.getenv("PRISM_DATE_FORMAT"):
@@ -2609,7 +2664,7 @@ License: GNU LGPL-3.0-or-later<br>
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
                 )
-                result = proc.communicate()[0]
+                result = proc.communicate()
             except Exception as e:
                 result = str(e)
             finally:
@@ -2642,10 +2697,16 @@ License: GNU LGPL-3.0-or-later<br>
             logger.warning("not implemented")
 
     @err_catcher(name=__name__)
-    def setTrayStartupWindows(self, enabled):
-        startMenuPath = os.path.join(
-            os.environ["AppData"], "Microsoft", "Windows", "Start Menu", "Programs"
-        )
+    def setTrayStartupWindows(self, enabled, allUsers=False):
+        if allUsers:
+            startMenuPath = os.path.join(
+                os.environ["PROGRAMDATA"], "Microsoft", "Windows", "Start Menu", "Programs"
+            )
+        else:
+            startMenuPath = os.path.join(
+                os.environ["AppData"], "Microsoft", "Windows", "Start Menu", "Programs"
+            )
+
         trayStartup = os.path.join(startMenuPath, "Startup", "Prism.lnk")
         if os.path.exists(trayStartup):
             try:
@@ -2670,18 +2731,28 @@ License: GNU LGPL-3.0-or-later<br>
 
     @err_catcher(name=__name__)
     def getTempFilepath(self, filename=None, ext=".jpg", filenamebase=None):
-        filenamebase = filenamebase or "prism"
-        path = os.path.join(os.environ["temp"], "Prism", filenamebase + "_")
+        if platform.system() == "Windows":
+            base = os.environ["temp"]
+        else:
+            base = "/tmp"
+
+        path = os.path.join(base, "Prism")
+        if not os.path.exists(path):
+            os.makedirs(path)
 
         if filename:
+            if filenamebase:
+                filename = filenamebase + filename
+
             filepath = os.path.join(path, filename)
         else:
+            path += "/"
+            if filenamebase:
+                path += filenamebase + "_"
+
             file = tempfile.NamedTemporaryFile(prefix=path, suffix=ext)
             filepath = file.name
             file.close()
-
-        if not os.path.exists(os.path.dirname(filepath)):
-            os.makedirs(os.path.dirname(filepath))
 
         return filepath
 

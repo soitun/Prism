@@ -100,9 +100,12 @@ class Prism_Maya_Functions(object):
             except:
                 return False
 
+            if not topLevelShelf:
+                return False
+
             if (
                 cmds.shelfTabLayout(topLevelShelf, query=True, tabLabelIndex=True)
-                == None
+                is None
             ):
                 return False
 
@@ -248,6 +251,49 @@ class Prism_Maya_Functions(object):
         return state
 
     @err_catcher(name=__name__)
+    def onShelfClickedImportConnectedAssets(self, doubleclick=False):
+        sm = self.core.getStateManager()
+        if not sm:
+            return
+
+        filepath = self.core.getCurrentFileName()
+        entity = self.core.getScenefileData(filepath)
+        if not entity or entity.get("type") != "shot":
+            msg = "Importing connected assets is possible in shot scenefiles only."
+            self.core.popup(msg)
+            return
+
+        productsToImport = []
+        entities = self.core.entities.getConnectedEntities(entity)
+        if not entities:
+            result = self.core.popupQuestion("No assets are connected to the current shot.", buttons=["Connect Assets...", "Close"], icon=QMessageBox.Information)
+            if result == "Connect Assets...":
+                self.core.entities.connectEntityDlg(entities=[entity])
+
+            return
+
+        tags = ["usd", "assembly"]
+        for centity in entities:
+            products = self.core.products.getProductsByTags(centity, tags)
+            productsToImport += products
+
+        if not productsToImport:
+            msg = "No products to import.\n(checking for tags: \"%s\")" % "\", \"".join(tags)
+            self.core.popup(msg)
+            return
+
+        for product in productsToImport:
+            if "asset_path" not in product:
+                continue
+
+            productPath = self.core.products.getLatestVersionpathFromProduct(product["product"], entity=product)
+            if not productPath:
+                continue
+
+            sm.importFile(productPath)
+            logger.debug("added product to shot: %s - %s" % (self.core.entities.getShotName(entity), productPath))
+
+    @err_catcher(name=__name__)
     def onShelfClickedExport(self, doubleclick=False):
         sm = self.core.getStateManager()
         if not sm:
@@ -355,6 +401,10 @@ class Prism_Maya_Functions(object):
             self.dlg_render.show()
 
     @err_catcher(name=__name__)
+    def getSetPrefix(self):
+        return self.core.getConfig("maya", "setPrefix", config="project") or ""
+
+    @err_catcher(name=__name__)
     def getDftStateParent(self, create=True):
         sm = self.core.getStateManager()
         if not sm:
@@ -373,7 +423,7 @@ class Prism_Maya_Functions(object):
             stateData = {
                 "statename": "Default States",
                 "listtype": "Export",
-                "stateenabled": "PySide2.QtCore.Qt.CheckState.Checked",
+                "stateenabled": 2,
                 "stateexpanded": False,
             }
             state = sm.createState("Folder", stateData=stateData)
@@ -647,6 +697,47 @@ class Prism_Maya_Functions(object):
         )
 
     @err_catcher(name=__name__)
+    def importImages(self, filepath=None, mediaBrowser=None, parent=None):
+        if mediaBrowser:
+            sourceData = mediaBrowser.compGetImportSource()
+            if not sourceData:
+                return
+
+            filepath = sourceData[0][0]
+            firstFrame = sourceData[0][1]
+            lastFrame = sourceData[0][2]
+            parent = parent or mediaBrowser
+
+        fString = "Please select an import option:"
+        buttons = ["Camera Backplate", "Dome Light", "Cancel"]
+        result = self.core.popupQuestion(fString, buttons=buttons, icon=QMessageBox.NoIcon, parent=parent)
+
+        if result == "Camera Backplate":
+            self.importBackplate(filepath)
+        elif result == "Dome Light":
+            self.importDomeLightTexture(filepath)
+        else:
+            return
+
+    @err_catcher(name=__name__)
+    def importBackplate(self, mediaPath):
+        camera = cmds.camera()
+        imagePlane = cmds.imagePlane(camera=camera[1])
+        cmds.setAttr(imagePlane[1] + ".imageName", mediaPath, type="string")
+        if "#" in os.path.basename(mediaPath):
+            cmds.setAttr(imagePlane[1] + ".useFrameExtension", 1)
+
+        cmds.lookThru(camera)
+
+    @err_catcher(name=__name__)
+    def importDomeLightTexture(self, mediaPath):
+        import mtoa.utils as mutils
+        lightShape, light = mutils.createLocator("aiSkyDomeLight", asLight=True)
+        filenode = cmds.shadingNode("file", asTexture=True, isColorManaged=True)
+        cmds.setAttr("%s.fileTextureName" % filenode, mediaPath, type="string")
+        cmds.connectAttr("%s.outColor" % filenode, "%s.color" % lightShape, force=True)
+
+    @err_catcher(name=__name__)
     def sm_export_addObjects(self, origin, objects=None):
         if objects:
             cmds.select(objects)
@@ -655,17 +746,20 @@ class Prism_Maya_Functions(object):
         if not setName:
             setName = origin.setTaskname("Export")
 
-        setName = self.validate(origin.getTaskname())
+        setName = self.getSetPrefix() + setName
+        valid = self.isNodeValid(origin, setName)
+        if not valid:
+            setName = cmds.sets(name=setName)
+            taskName = setName.split(self.getSetPrefix(), 1)[-1] if self.getSetPrefix() else setName
+            if taskName != origin.getTaskname():
+                origin.setTaskname(taskName)
+
         for i in cmds.ls(selection=True, long=True):
             if i not in origin.nodes:
                 try:
                     cmds.sets(i, include=setName)
                 except Exception as e:
-                    QMessageBox.warning(
-                        self.core.messageParent,
-                        "Warning",
-                        "Cannot add object:\n\n%s" % str(e),
-                    )
+                    self.core.popup("Cannot add object:\n\n%s" % str(e))
                 else:
                     origin.nodes.append(i)
 
@@ -675,6 +769,10 @@ class Prism_Maya_Functions(object):
             return cmds.ls(node)[0]
         else:
             return "invalid"
+
+    @err_catcher(name=__name__)
+    def getSelectedNodes(self):
+        return cmds.ls(selection=True)
 
     @err_catcher(name=__name__)
     def selectNodes(self, origin):
@@ -735,6 +833,17 @@ class Prism_Maya_Functions(object):
 
         if hasattr(origin, "gb_submit"):
             origin.gb_submit.setVisible(True)
+
+        origin.w_fbxSettings = QWidget()
+        origin.lo_fbxSettings = QHBoxLayout()
+        origin.lo_fbxSettings.setContentsMargins(9, 0, 9, 0)
+        origin.w_fbxSettings.setLayout(origin.lo_fbxSettings)
+        origin.l_fbxSettings = QLabel("Settings:")
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        origin.b_fbxSettings = QPushButton("Edit FBX Settings...")
+        origin.lo_fbxSettings.addWidget(origin.l_fbxSettings)
+        origin.lo_fbxSettings.addSpacerItem(spacer)
+        origin.lo_fbxSettings.addWidget(origin.b_fbxSettings)
 
         origin.w_exportNamespaces = QWidget()
         origin.lo_exportNamespaces = QHBoxLayout()
@@ -797,12 +906,14 @@ class Prism_Maya_Functions(object):
         origin.lo_deleteDisplayLayers.addSpacerItem(spacer)
         origin.lo_deleteDisplayLayers.addWidget(origin.chb_deleteDisplayLayers)
 
-        origin.gb_export.layout().insertWidget(10, origin.w_exportNamespaces)
-        origin.gb_export.layout().insertWidget(11, origin.w_importReferences)
-        origin.gb_export.layout().insertWidget(12, origin.w_preserveReferences)
-        origin.gb_export.layout().insertWidget(13, origin.w_deleteUnknownNodes)
-        origin.gb_export.layout().insertWidget(14, origin.w_deleteDisplayLayers)
+        origin.gb_export.layout().insertWidget(10, origin.w_fbxSettings)
+        origin.gb_export.layout().insertWidget(11, origin.w_exportNamespaces)
+        origin.gb_export.layout().insertWidget(12, origin.w_importReferences)
+        origin.gb_export.layout().insertWidget(13, origin.w_preserveReferences)
+        origin.gb_export.layout().insertWidget(14, origin.w_deleteUnknownNodes)
+        origin.gb_export.layout().insertWidget(15, origin.w_deleteDisplayLayers)
 
+        origin.b_fbxSettings.clicked.connect(self.editFbxSettings)
         origin.chb_exportNamespaces.stateChanged.connect(
             origin.stateManager.saveStatesToScene
         )
@@ -823,6 +934,11 @@ class Prism_Maya_Functions(object):
         )
 
     @err_catcher(name=__name__)
+    def editFbxSettings(self):
+        cmd = "FBXUICallBack -1 editExportPresetInNewWindow fbx;"
+        mel.eval(cmd)
+
+    @err_catcher(name=__name__)
     def validate(self, string):
         vstr = self.core.validateStr(string, denyChars=["-"])
         return vstr
@@ -835,45 +951,57 @@ class Prism_Maya_Functions(object):
         cmds.delete(fromSet)
 
     @err_catcher(name=__name__)
-    def sm_export_setTaskText(self, origin, prevTaskName, newTaskName):
+    def sm_export_setTaskText(self, origin, prevTaskName, newTaskName, create=True):
         prev = self.validate(prevTaskName) if prevTaskName else ""
-        if self.isNodeValid(origin, prev) and "objectSet" in cmds.nodeType(
-            prev, inherited=True
+        prevSet = self.getSetPrefix() + prev
+        newSetName = self.getSetPrefix() + newTaskName
+        if self.isNodeValid(origin, prevSet) and "objectSet" in cmds.nodeType(
+            prevSet, inherited=True
         ):
-            if self.isNodeValid(origin, newTaskName) and "objectSet" in cmds.nodeType(
-                newTaskName, inherited=True
-            ):
-                msg = "A selection set with the name \"%s\" does already exist." % newTaskName
-                result = self.core.popupQuestion(msg, buttons=["Merge sets", "Use unique name", "Cancel"], icon=QMessageBox.Warning)
-                if result == "Merge sets":
-                    self.mergeSets(prev, newTaskName)
-                    return newTaskName
-                elif result == "Cancel":
-                    return prev
+            if create:
+                if self.isNodeValid(origin, newSetName) and "objectSet" in cmds.nodeType(
+                    newSetName, inherited=True
+                ):
+                    import traceback
+                    traceback.print_stack()
+                    msg = "A selection set with the name \"%s\" does already exist." % newSetName
+                    result = self.core.popupQuestion(msg, buttons=["Merge sets", "Use unique name", "Cancel"], icon=QMessageBox.Warning)
+                    if result == "Merge sets":
+                        self.mergeSets(prevSet, newSetName)
+                        return newTaskName
+                    elif result == "Cancel":
+                        return prev
 
-            try:
-                setName = cmds.rename(prev, newTaskName)
-            except Exception as e:
-                self.core.popup("Failed to rename set: %s" % e)
-                setName = prev
-        else:
-            if self.isNodeValid(origin, newTaskName) and "objectSet" in cmds.nodeType(
-                newTaskName, inherited=True
-            ) and origin.stateManager.loading:
+                try:
+                    setName = cmds.rename(prevSet, newSetName)
+                    setName = setName.split(self.getSetPrefix(), 1)[-1] if self.getSetPrefix() else setName
+                except Exception as e:
+                    self.core.popup("Failed to rename set: %s" % e)
+                    setName = prev
+            else:
+                cmds.delete(prevSet)
+                setName = None
+        elif create:
+            valid = self.isNodeValid(origin, newSetName)
+            isSet = "objectSet" in cmds.nodeType(newSetName, inherited=True) if valid else False
+            if valid and isSet and origin.stateManager.loading:
                 setName = newTaskName
             else:
-                setName = cmds.sets(name=newTaskName)
+                setName = cmds.sets(name=newSetName)
+                setName = setName.split(self.getSetPrefix(), 1)[-1] if self.getSetPrefix() else setName
+        else:
+            setName = None
 
         return setName
 
     @err_catcher(name=__name__)
     def sm_export_removeSetItem(self, origin, node):
-        setName = self.validate(origin.getTaskname())
+        setName = self.getSetPrefix() + self.validate(origin.getTaskname())
         cmds.sets(node, remove=setName)
 
     @err_catcher(name=__name__)
     def sm_export_clearSet(self, origin):
-        setName = origin.getTaskname()
+        setName = self.getSetPrefix() + origin.getTaskname()
         if self.isNodeValid(origin, setName):
             cmds.sets(clear=setName)
 
@@ -884,6 +1012,7 @@ class Prism_Maya_Functions(object):
         if not setName:
             setName = origin.setTaskname("Export")
 
+        setName = self.getSetPrefix() + setName
         try:
             # the nodes in the set need to be selected to get their long dag path
             cmds.select(setName)
@@ -893,7 +1022,8 @@ class Prism_Maya_Functions(object):
         except:
             newSetName = cmds.sets(name=setName)
             if newSetName != setName:
-                origin.setTaskname(newSetName)
+                newTaskName = newSetName.split(self.getSetPrefix(), 1)[-1] if self.getSetPrefix() else newSetName
+                origin.setTaskname(newTaskName)
 
         origin.nodes = cmds.ls(selection=True, long=True)
         try:
@@ -933,7 +1063,7 @@ class Prism_Maya_Functions(object):
     ):
         cmds.select(clear=True)
         if nodes is None:
-            setName = self.validate(origin.getTaskname())
+            setName = self.getSetPrefix() + self.validate(origin.getTaskname())
             if not self.isNodeValid(origin, setName):
                 return 'Canceled: The selection set "%s" is invalid.' % setName
 
@@ -949,36 +1079,13 @@ class Prism_Maya_Functions(object):
             expType = origin.getOutputType()
 
         if expType == ".obj":
-            cmds.loadPlugin("objExport", quiet=True)
-            objNodes = [
-                x
-                for x in origin.nodes
-                if cmds.listRelatives(x, shapes=True) is not None
-            ]
-            cmds.select(objNodes)
-            for i in range(startFrame, endFrame + 1):
-                cmds.currentTime(i, edit=True)
-                foutputName = outputName.replace("####", format(i, "04"))
-                if origin.chb_wholeScene.isChecked():
-                    cmds.file(
-                        foutputName,
-                        force=True,
-                        exportAll=True,
-                        type="OBJexport",
-                        options="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1",
-                    )
-                else:
-                    if cmds.ls(selection=True) == []:
-                        return "Canceled: No valid objects are specified for .obj export. No output will be created."
-                    else:
-                        cmds.file(
-                            foutputName,
-                            force=True,
-                            exportSelected=True,
-                            type="OBJexport",
-                            options="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1",
-                        )
-            outputName = foutputName
+            self.exportAsObj(
+                outputName,
+                objects=origin.nodes,
+                wholeScene=origin.chb_wholeScene.isChecked(),
+                startFrame=startFrame,
+                endFrame=endFrame
+            )
         elif expType == ".fbx":
             origRange = self.getFrameRange()
             self.setFrameRange(None, startFrame, endFrame)
@@ -1192,6 +1299,46 @@ class Prism_Maya_Functions(object):
         return outputName
 
     @err_catcher(name=__name__)
+    def exportAsObj(self, outputPath, objects=None, wholeScene=False, startFrame=None, endFrame=None):
+        cmds.loadPlugin("objExport", quiet=True)
+        if objects:
+            cmds.select(clear=True)
+            objNodes = [
+                x
+                for x in objects
+                if cmds.listRelatives(x, shapes=True) is not None
+            ]
+            cmds.select(objNodes)
+
+        if startFrame is None:
+            startFrame = endFrame = int(self.getCurrentFrame())
+
+        for i in range(startFrame, endFrame + 1):
+            cmds.currentTime(i, edit=True)
+            foutputName = outputPath.replace("####", format(i, "04"))
+            if wholeScene:
+                cmds.file(
+                    foutputName,
+                    force=True,
+                    exportAll=True,
+                    type="OBJexport",
+                    options="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1",
+                )
+            else:
+                if cmds.ls(selection=True) == []:
+                    return "Canceled: No valid objects are specified for .obj export. No output will be created."
+                else:
+                    cmds.file(
+                        foutputName,
+                        force=True,
+                        exportSelected=True,
+                        type="OBJexport",
+                        options="groups=1;ptgroups=1;materials=1;smoothing=1;normals=1",
+                    )
+
+        return foutputName
+
+    @err_catcher(name=__name__)
     def deleteOutOfRangeKeys(self):
         startframe = cmds.playbackOptions(q=True, minTime=True)
         endframe = cmds.playbackOptions(q=True, maxTime=True)
@@ -1292,7 +1439,7 @@ class Prism_Maya_Functions(object):
 
     @err_catcher(name=__name__)
     def sm_export_preDelete(self, origin):
-        setName = self.validate(origin.getTaskname())
+        setName = self.getSetPrefix() + self.validate(origin.getTaskname())
         try:
             cmds.delete(setName)
         except:
@@ -1306,6 +1453,7 @@ class Prism_Maya_Functions(object):
 
     @err_catcher(name=__name__)
     def sm_export_typeChanged(self, origin, idx):
+        origin.w_fbxSettings.setVisible(idx == ".fbx")
         origin.w_exportNamespaces.setVisible(idx == ".abc")
         exportScene = idx in [".ma", ".mb"]
         origin.w_importReferences.setVisible(exportScene)
@@ -1837,11 +1985,11 @@ tabLayout -e -sti %s $tabLayout;"""
 
             outputPrefix = outputPrefix[3:]
             cmds.setAttr(
-                "rmanGlobals.imageFileFormat", os.path.basename(outputPrefix) + ".<f4>.<ext>", type="string"
+                "rmanGlobals.imageFileFormat", os.path.basename(outputPrefix).replace("beauty", "<aov>") + ".<f4>.<ext>", type="string"
             )
 
             cmds.setAttr(
-                "rmanGlobals.imageOutputDir", os.path.dirname(rSettings["outputName"]).replace("\\", "/"), type="string"
+                "rmanGlobals.imageOutputDir", os.path.dirname(rSettings["outputName"]).replace("beauty", "<aov>").replace("\\", "/"), type="string"
             )
             cmds.setAttr(
                 "rmanGlobals.ribOutputDir", os.path.dirname(rSettings["outputName"]).replace("\\", "/"), type="string"
@@ -2100,7 +2248,6 @@ tabLayout -e -sti %s $tabLayout;"""
         dlParams["pluginInfos"]["OutputFilePrefix"] = os.path.splitext(
             os.path.basename(dlParams["jobInfos"]["OutputFilename0"])
         )[0]
-        dlParams["pluginInfos"]["Renderer"] = self.getCurrentRenderer(origin)
 
         import maya.app.renderSetup.model.renderSetup as renderSetup
 
@@ -2155,6 +2302,12 @@ tabLayout -e -sti %s $tabLayout;"""
             self.core.saveScene()
         else:
             dlParams["pluginInfos"]["Renderer"] = self.getCurrentRenderer(origin)
+            if dlParams["pluginInfos"]["Renderer"] == "renderman":
+                dlParams["pluginInfos"]["Renderer"] = "renderman22"
+                dlParams["pluginInfos"]["OutputFilePrefix"] += ".<f4>.<ext>"
+                dlParams["pluginInfos"]["OutputFilePrefix"] = dlParams["pluginInfos"]["OutputFilePrefix"].replace("beauty", "<aov>")
+                dlParams["pluginInfos"]["OutputFilePath"] = dlParams["pluginInfos"]["OutputFilePath"].replace("beauty", "<aov>")
+
             if hasattr(origin, "curCam") and origin.curCam != "Current View":
                 dlParams["pluginInfos"]["Camera"] = self.core.appPlugin.getCamName(
                     origin, origin.curCam
@@ -2163,18 +2316,23 @@ tabLayout -e -sti %s $tabLayout;"""
     @err_catcher(name=__name__)
     def getDeadlineScript(self, stateType):
         script = """
-from PySide2.QtCore import *
-from PySide2.QtGui import *
-from PySide2.QtWidgets import *
+try:
+    from PySide6.QtCore import *
+    from PySide6.QtGui import *
+    from PySide6.QtWidgets import *
+except:
+    from PySide2.QtCore import *
+    from PySide2.QtGui import *
+    from PySide2.QtWidgets import *
+
 qapp = QApplication.instance()
 if not qapp:
     qapp = QApplication(sys.argv)
 
-from PySide2 import QtWidgets
 import shiboken2
-shiboken2.delete(QtWidgets.QApplication.instance())
-QtWidgets.QApplication.instance()
-QtWidgets.QApplication([])
+shiboken2.delete(QApplication.instance())
+QApplication.instance()
+QApplication([])
 
 import PrismInit
 pcore = PrismInit.prismInit(prismArgs=["noUI"])
@@ -2323,7 +2481,7 @@ print( "READY FOR INPUT\\n" )
         return warnings
 
     @err_catcher(name=__name__)
-    def sm_render_fixOutputPath(self, origin, outputName, singleFrame=False):
+    def sm_render_fixOutputPath(self, origin, outputName, singleFrame=False, state=None):
         curRender = self.getCurrentRenderer(origin)
 
         if curRender == "vray":
@@ -2429,7 +2587,8 @@ print( "READY FOR INPUT\\n" )
         origin.chb_trackObjects.setChecked(True)
         origin.nodes = [refNode]
         setName = os.path.splitext(os.path.basename(scenePath))[0]
-        origin.setName = cmds.sets(name="Import_%s_" % setName)
+        name = self.getSetPrefix() + "Import_%s_" % setName
+        origin.setName = cmds.sets(name=name)
         for i in origin.nodes:
             cmds.sets(i, include=origin.setName)
 
@@ -2794,7 +2953,6 @@ print( "READY FOR INPUT\\n" )
                                 newObjs.append(obj)
 
                         objs = newObjs
-                        print(objs)
                         cmds.AbcImport(
                             impFileName,
                             mode="import",
@@ -2913,7 +3071,8 @@ print( "READY FOR INPUT\\n" )
             cmds.delete(origin.setName)
 
         if len(origin.nodes) > 0:
-            origin.setName = cmds.sets(name="Import_%s_" % fileName[0])
+            name = self.getSetPrefix() + "Import_%s_" % fileName[0]
+            origin.setName = cmds.sets(name=name)
         for node in origin.nodes:
             cmds.sets(node, include=origin.setName)
         result = len(importedNodes) > 0
@@ -2924,9 +3083,14 @@ print( "READY FOR INPUT\\n" )
         return rDict
 
     @err_catcher(name=__name__)
-    def basicImport(self, filepath, kwargs):
-        del kwargs["importFunction"]
-        del kwargs["settings"]
+    def basicImport(self, filepath, kwargs=None):
+        kwargs = kwargs or {}
+        if "importFunction" in kwargs:
+            del kwargs["importFunction"]
+
+        if "settings" in kwargs:
+            del kwargs["settings"]
+
         try:
             importedNodes = cmds.file(filepath, **kwargs)
         except Exception as e:
@@ -3048,6 +3212,7 @@ Show only polygon objects and image planes in viewport.
         origin.chb_useRecommendedSettings.stateChanged.connect(
             origin.stateManager.saveStatesToScene
         )
+        origin.cb_formats.addItem(".png")
         origin.cb_formats.addItem(".mp4 (with audio)")
         if platform.system() == "Windows":
             origin.cb_formats.addItem(".avi (with audio)")
@@ -3090,6 +3255,9 @@ Show only polygon objects and image planes in viewport.
                     + "#" * self.core.framePadding
                     + os.path.splitext(kwargs["outputpath"])[1]
                 )
+
+            if selFmt == ".png":
+                outputName = os.path.splitext(kwargs["outputpath"])[0] + ".png"
         
         if outputName and outputName != kwargs["outputpath"]:
             return {"outputName": outputName}
@@ -3191,6 +3359,9 @@ Show only polygon objects and image planes in viewport.
             outputName.replace("\\", "\\\\"),
             soundNode,
         )
+
+        if selFmt == ".png":
+            cmdString += ", compression=\"png\""
 
         if origin.chb_resOverride.isChecked():
             cmdString += ", width=%s, height=%s" % (

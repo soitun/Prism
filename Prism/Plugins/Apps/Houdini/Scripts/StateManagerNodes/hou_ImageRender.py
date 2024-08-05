@@ -151,7 +151,7 @@ class ImageRenderClass(object):
 
         if not hasattr(self, "curRenderer"):
             create = (stateData is None) and QApplication.keyboardModifiers() != Qt.ControlModifier
-            self.rendererChanged(self.cb_renderer.currentText(), create=create)
+            self.rendererChanged(create=create)
 
         if hasattr(self, "node") and self.node is not None:
             self.sp_rangeStart.setValue(self.node.parm("f1").eval())
@@ -332,14 +332,10 @@ class ImageRenderClass(object):
             self.l_pathLast.setText(lePath)
             self.l_pathLast.setToolTip(lePath)
         if "stateenabled" in data:
-            self.state.setCheckState(
-                0,
-                eval(
-                    data["stateenabled"]
-                    .replace("PySide.QtCore.", "")
-                    .replace("PySide2.QtCore.", "")
-                ),
-            )
+            if type(data["stateenabled"]) == int:
+                self.state.setCheckState(
+                    0, Qt.CheckState(data["stateenabled"]),
+                )
 
         self.nameChanged(self.e_name.text())
         self.core.callback("onStateSettingsLoaded", self, data)
@@ -384,10 +380,10 @@ class ImageRenderClass(object):
         self.chb_useTake.stateChanged.connect(self.useTakeChanged)
         self.cb_take.activated.connect(self.stateManager.saveStatesToScene)
         self.cb_master.activated.connect(self.stateManager.saveStatesToScene)
-        self.cb_outPath.activated[str].connect(self.stateManager.saveStatesToScene)
+        self.cb_outPath.activated.connect(self.stateManager.saveStatesToScene)
         self.chb_format.stateChanged.connect(self.useFormatChanged)
         self.cb_format.activated.connect(self.onFormatChanged)
-        self.cb_renderer.currentIndexChanged[str].connect(self.rendererChanged)
+        self.cb_renderer.currentIndexChanged.connect(self.rendererChanged)
         self.chb_separateAovs.stateChanged.connect(self.stateManager.saveStatesToScene)
         self.gb_submit.toggled.connect(self.rjToggled)
         self.cb_manager.activated.connect(self.managerChanged)
@@ -585,7 +581,8 @@ class ImageRenderClass(object):
         self.stateManager.saveStatesToScene()
 
     @err_catcher(name=__name__)
-    def rendererChanged(self, renderer, create=True):
+    def rendererChanged(self, idx=None, create=True):
+        renderer = self.cb_renderer.currentText()
         if hasattr(self, "curRenderer"):
             getattr(self.curRenderer, "deactivated", lambda x: None)(self)
 
@@ -1042,7 +1039,7 @@ class ImageRenderClass(object):
                     self.setTaskname("$OS")
 
                 self.cb_renderer.setCurrentIndex(self.cb_renderer.findText(i.label))
-                self.rendererChanged(self.cb_renderer.currentText())
+                self.rendererChanged()
                 self.setFormat(self.getFormatFromNode())
                 result = True
 
@@ -1296,7 +1293,7 @@ class ImageRenderClass(object):
         extension = extension.split(" ")[0]
         entity = self.getOutputEntity()
         framePadding = (
-            "$F4" if self.cb_rangeType.currentText() != "Single Frame" else ""
+            ("$F" + str(self.core.framePadding)) if self.cb_rangeType.currentText() != "Single Frame" else ""
         )
         location = self.cb_outPath.currentText()
 
@@ -1427,7 +1424,9 @@ class ImageRenderClass(object):
                     self.state.text(0) + ": error - take '%s' doesn't exist." % pTake
                 ]
 
-        hou.hipFile.save()
+        if self.stateManager.actionSaveDuringPub.isChecked():
+            hou.hipFile.save()
+
         if self.core.getConfig("globals", "backupScenesOnPublish", config="project"):
             self.core.entities.backupScenefile(os.path.dirname(outputName), bufferMinutes=0)
 
@@ -1715,7 +1714,7 @@ class ImageRenderClass(object):
             "dlgpupt": self.sp_dlGPUpt.value(),
             "dlgpudevices": self.le_dlGPUdevices.text(),
             "lastexportpath": self.l_pathLast.text().replace("\\", "/"),
-            "stateenabled": str(self.state.checkState(0)),
+            "stateenabled": self.core.getCheckStateValue(self.state.checkState(0)),
         }
         self.core.callback("onStateGetSettings", self, stateProps)
         return stateProps

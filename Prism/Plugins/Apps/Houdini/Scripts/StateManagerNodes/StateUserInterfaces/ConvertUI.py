@@ -1,10 +1,10 @@
 fname = "hou_ImageRender"
-fname = "hou_ImportFile"
-fname = "hou_Export"
-fname = "hou_InstallHDA"
-fname = "hou_SaveHDA"
-fname = "hou_Playblast"
-fname = "hou_Dependency"
+# fname = "hou_ImportFile"
+# fname = "hou_Export"
+# fname = "hou_InstallHDA"
+# fname = "hou_SaveHDA"
+# fname = "hou_Playblast"
+# fname = "hou_Dependency"
 
 code = """
 with open("%s" + "_ui.py", "r+") as f:

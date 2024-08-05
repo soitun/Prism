@@ -1457,14 +1457,19 @@ sys.path.append(root + "/Scripts")
 import PrismCore
 pcore = PrismCore.create(prismArgs=["noUI", "loadProject"])
 path = r\"%s\"
-""" % (self.core.prismRoot, jobOutputFile)
+""" % (self.core.prismRoot, os.path.expandvars(jobOutputFile))
 
         if masterType == "media":
+            if self.core.appPlugin.appType == "2d":
+                mediaType = "2drenders"
+            else:
+                mediaType = "3drenders"
+
             masterAction = origin.cb_master.currentText()
             if masterAction == "Set as master":
-                code += "pcore.mediaProducts.updateMasterVersion(path)"
+                code += "pcore.mediaProducts.updateMasterVersion(path, mediaType=\"%s\")" % mediaType
             elif masterAction == "Add to master":
-                code += "pcore.mediaProducts.addToMasterVersion(path)"
+                code += "pcore.mediaProducts.addToMasterVersion(path, mediaType=\"%s\")" % mediaType
         elif masterType == "product":
             code += "pcore.products.updateMasterVersion(path)"
 
@@ -1579,7 +1584,7 @@ path = r\"%s\"
             cleanupScript = None
 
         if cleanupScript:
-            arguments = ["\"%s\"" % args[0]]
+            arguments = [args[0]]
             depId = self.getJobIdFromSubmitResult(result)
             if depId:
                 cleanupDep = [depId]
@@ -1768,7 +1773,7 @@ path = r\"%s\"
     def submitPythonJob(
         self,
         code="",
-        version="3.9",
+        version="3.11",
         jobName=None,
         jobOutput=None,
         jobPool="None",
@@ -2242,7 +2247,7 @@ path = r\"%s\"
 
         if cleanupScript:
             jobName = jobName.rsplit("_", 1)[0]
-            arguments = ["\"%s\"" % args[0]]
+            arguments = [args[0]]
             depId = self.getJobIdFromSubmitResult(result)
             if depId:
                 cleanupDep = [depId]
@@ -2408,7 +2413,7 @@ path = r\"%s\"
 
         if cleanupScript:
             jobName = jobName.rsplit("_", 1)[0]
-            arguments = ["\"%s\"" % args[0]]
+            arguments = [args[0]]
             depId = self.getJobIdFromSubmitResult(result)
             if depId:
                 cleanupDep = [depId]
@@ -2569,7 +2574,7 @@ path = r\"%s\"
 
         if cleanupScript:
             jobName = jobName.rsplit("_", 1)[0]
-            arguments = ["\"%s\"" % args[0]]
+            arguments = [args[0]]
             depId = self.getJobIdFromSubmitResult(result)
             if depId:
                 cleanupDep = [depId]
@@ -2731,7 +2736,7 @@ path = r\"%s\"
 
         if cleanupScript:
             jobName = jobName.rsplit("_", 1)[0]
-            arguments = ["\"%s\"" % args[0]]
+            arguments = [args[0]]
             depId = self.getJobIdFromSubmitResult(result)
             if depId:
                 cleanupDep = [depId]

@@ -58,7 +58,7 @@ class PathManager(object):
         render,
         location="global",
         comment="",
-        ignoreEmpty=True,
+        ignoreEmpty=False,
         node=None,
     ):
         fileName = self.core.getCurrentFileName()
@@ -95,15 +95,16 @@ class PathManager(object):
             outputPath = "FileNotInPipeline"
 
         if render and outputPath != "FileNotInPipeline":
-            if not os.path.exists(os.path.dirname(outputPath)):
+            expandedOutputpath = os.path.expandvars(outputPath)
+            if not os.path.exists(os.path.dirname(expandedOutputpath)):
                 try:
-                    os.makedirs(os.path.dirname(outputPath))
+                    os.makedirs(os.path.dirname(expandedOutputpath))
                 except:
                     self.core.popup("Could not create output folder")
 
             details = outputData.copy()
             details["sourceScene"] = self.core.getCurrentFileName()
-            filepath = os.path.dirname(outputPath)
+            filepath = os.path.dirname(expandedOutputpath)
             self.core.saveVersionInfo(
                 filepath=filepath,
                 details=details,
@@ -242,6 +243,12 @@ class PathManager(object):
 
             context["asset"] = os.path.basename(entity["asset_path"])
             context["asset_path"] = entity["asset_path"]
+            if "sequence" in context:
+                del context["sequence"]
+
+            if "shot" in context:
+                del context["shot"]
+
             scenePath = self.core.projects.getResolvedProjectStructurePath(
                 "assetScenefiles", context=context
             )
@@ -249,6 +256,12 @@ class PathManager(object):
         elif entity["type"] == "shot":
             context["sequence"] = entity["sequence"]
             context["shot"] = entity["shot"]
+            if "asset" in context:
+                del context["asset"]
+
+            if "asset_path" in context:
+                del context["asset_path"]
+
             scenePath = self.core.projects.getResolvedProjectStructurePath(
                 "shotScenefiles", context=context
             )
@@ -260,7 +273,7 @@ class PathManager(object):
         return scenePath
 
     @err_catcher(name=__name__)
-    def getCachePathData(self, cachePath, addPathData=True, validateModTime=False):
+    def getCachePathData(self, cachePath, addPathData=True, validateModTime=False, allowCache=True):
         if not cachePath:
             return {}
 
@@ -277,7 +290,7 @@ class PathManager(object):
             if cacheDate and cacheDate != mdate:
                 self.core.configs.clearCache(path=cacheConfig)
 
-        cacheData = self.core.getConfig(configPath=cacheConfig) or {}
+        cacheData = self.core.getConfig(configPath=cacheConfig, allowCache=allowCache) or {}
         cacheData = cacheData.copy()
         if addPathData:
             if os.path.splitext(cachePath)[1]:
@@ -315,7 +328,7 @@ class PathManager(object):
             return self.getRenderProductData(productPath, isFilepath=isFilepath, addPathData=addPathData, mediaType=mediaType, validateModTime=validateModTime)
 
     @err_catcher(name=__name__)
-    def getRenderProductData(self, productPath, isFilepath=True, addPathData=True, mediaType="3drenders", validateModTime=False, isVersionFolder=False):
+    def getRenderProductData(self, productPath, isFilepath=True, addPathData=True, mediaType="3drenders", validateModTime=False, isVersionFolder=False, allowCache=True):
         productPath = os.path.normpath(productPath)
         if os.path.splitext(productPath)[1]:
             productConfig = self.core.mediaProducts.getMediaVersionInfoPathFromFilepath(productPath, mediaType=mediaType)
@@ -330,7 +343,7 @@ class PathManager(object):
             if cacheDate and cacheDate != mdate:
                 self.core.configs.clearCache(path=productConfig)
 
-        productData = self.core.getConfig(configPath=productConfig) or {}
+        productData = self.core.getConfig(configPath=productConfig, allowCache=allowCache) or {}
         if addPathData:
             if isVersionFolder:
                 pathData = self.core.mediaProducts.getMediaDataFromVersionFolder(productPath, mediaType=mediaType)
@@ -620,12 +633,21 @@ class PathManager(object):
             return os.path.splitext(path)
 
     @err_catcher(name=__name__)
-    def getEntityTypeFromPath(self, path):
+    def getEntityTypeFromPath(self, path, projectPath=None):
         globalPath = self.core.convertPath(path, "global")
         globalPath = os.path.normpath(globalPath)
         globalPath = os.path.splitdrive(globalPath)[1]
-        assetPath = os.path.splitdrive(self.core.assetPath)[1]
-        sequencePath = os.path.splitdrive(self.core.sequencePath)[1]
+        assetPath = self.core.assetPath
+        if projectPath:
+            assetPath = assetPath.replace(os.path.normpath(self.core.projectPath), projectPath)
+
+        assetPath = os.path.splitdrive(assetPath)[1]
+
+        sequencePath = self.core.sequencePath
+        if projectPath:
+            sequencePath = sequencePath.replace(os.path.normpath(self.core.projectPath), projectPath)
+
+        sequencePath = os.path.splitdrive(sequencePath)[1]
         if globalPath.startswith(assetPath):
             return "asset"
         elif globalPath.startswith(sequencePath):

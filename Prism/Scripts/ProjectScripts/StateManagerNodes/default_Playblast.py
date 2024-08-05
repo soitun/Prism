@@ -180,14 +180,10 @@ class PlayblastClass(object):
             self.l_pathLast.setText(lePath)
             self.l_pathLast.setToolTip(lePath)
         if "stateenabled" in data:
-            self.state.setCheckState(
-                0,
-                eval(
-                    data["stateenabled"]
-                    .replace("PySide.QtCore.", "")
-                    .replace("PySide2.QtCore.", "")
-                ),
-            )
+            if type(data["stateenabled"]) == int:
+                self.state.setCheckState(
+                    0, Qt.CheckState(data["stateenabled"]),
+                )
 
         getattr(self.core.appPlugin, "sm_playblast_loadData", lambda x, y: None)(
             self, data
@@ -731,7 +727,8 @@ class PlayblastClass(object):
         self.updateLastPath(outputName)
         self.stateManager.saveStatesToScene()
 
-        self.core.saveScene(versionUp=False, prismReq=False)
+        if self.stateManager.actionSaveDuringPub.isChecked():
+            self.core.saveScene(versionUp=False, prismReq=False)
 
         try:
             if not self.gb_submit.isHidden() and self.gb_submit.isChecked():
@@ -907,7 +904,7 @@ class PlayblastClass(object):
                 "rjsuspended": str(self.chb_rjSuspended.isChecked()),
                 "dlconcurrent": self.sp_dlConcurrentTasks.value(),
                 "lastexportpath": self.l_pathLast.text().replace("\\", "/"),
-                "stateenabled": str(self.state.checkState(0)),
+                "stateenabled": self.core.getCheckStateValue(self.state.checkState(0)),
                 "outputformat": str(self.cb_formats.currentText()),
             }
         )

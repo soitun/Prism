@@ -55,9 +55,9 @@ if sys.version_info[0] != 3 or sys.version_info[1] < 7:
 sys.path.insert(0, os.path.join(prismRoot, "Scripts"))
 import PrismCore
 
-from PySide2.QtCore import *
-from PySide2.QtGui import *
-from PySide2.QtWidgets import *
+from qtpy.QtCore import *
+from qtpy.QtGui import *
+from qtpy.QtWidgets import *
 
 
 from bpy.app.handlers import persistent

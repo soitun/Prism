@@ -19,10 +19,10 @@ class Ui_w_mediaBrowser(object):
         w_mediaBrowser.resize(714, 393)
         self.horizontalLayout = QHBoxLayout(w_mediaBrowser)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.splitter = QSplitter(w_mediaBrowser)
-        self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Horizontal)
-        self.w_identifier = QWidget(self.splitter)
+        self.splitter1 = QSplitter(w_mediaBrowser)
+        self.splitter1.setObjectName(u"splitter1")
+        self.splitter1.setOrientation(Qt.Horizontal)
+        self.w_identifier = QWidget(self.splitter1)
         self.w_identifier.setObjectName(u"w_identifier")
         sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(8)
@@ -75,8 +75,8 @@ class Ui_w_mediaBrowser(object):
 
         self.verticalLayout_8.addWidget(self.w_autoUpdate)
 
-        self.splitter.addWidget(self.w_identifier)
-        self.w_version = QWidget(self.splitter)
+        self.splitter1.addWidget(self.w_identifier)
+        self.w_version = QWidget(self.splitter1)
         self.w_version.setObjectName(u"w_version")
         sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy1.setHorizontalStretch(9)
@@ -99,9 +99,9 @@ class Ui_w_mediaBrowser(object):
 
         self.verticalLayout_11.addWidget(self.lw_version)
 
-        self.splitter.addWidget(self.w_version)
+        self.splitter1.addWidget(self.w_version)
 
-        self.horizontalLayout.addWidget(self.splitter)
+        self.horizontalLayout.addWidget(self.splitter1)
 
 
         self.retranslateUi(w_mediaBrowser)

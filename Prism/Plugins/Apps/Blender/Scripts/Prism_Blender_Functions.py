@@ -273,7 +273,8 @@ class Prism_Blender_Functions(object):
             if bpy.app.version < (4, 0, 0):
                 bpy.ops.wm.open_mainfile(ctx, "INVOKE_DEFAULT", filepath=filepath, display_file_selector=False)
             else:
-                bpy.ops.wm.open_mainfile(filepath=filepath, display_file_selector=False)
+                with bpy.context.temp_override(**ctx):
+                    bpy.ops.wm.open_mainfile("INVOKE_DEFAULT", filepath=filepath, display_file_selector=False)
         except Exception as e:
             if "File written by newer Blender binary" in str(e):
                 msg = "Warning occurred while opening file:\n\n%s" % str(e)
@@ -565,6 +566,31 @@ class Prism_Blender_Functions(object):
         return outputName
 
     @err_catcher(name=__name__)
+    def exportSelectionToObj(self, outputName):
+        with bpy.context.temp_override(**self.getOverrideContext()):
+            bpy.ops.wm.obj_export(
+                filepath=outputName,
+                export_selected_objects=True,
+                export_colors=True,
+            )
+
+        return True
+
+    @err_catcher(name=__name__)
+    def exportSelectionToFbx(self, outputName):
+        with bpy.context.temp_override(**self.getOverrideContext()):
+            bpy.ops.export_scene.fbx(
+                filepath=outputName,
+                use_selection=True,
+                bake_anim=False,
+                colors_type="LINEAR",
+                apply_unit_scale=False,
+                global_scale=0.01,
+            )
+
+        return True
+
+    @err_catcher(name=__name__)
     def exportFBX(self, outputName, origin, startFrame, endFrame, expNodes):
         useAnim = startFrame != endFrame
         if bpy.app.version >= (2, 79, 7):
@@ -753,6 +779,51 @@ class Prism_Blender_Functions(object):
                     return ctx
 
         return ctx
+
+    @err_catcher(name=__name__)
+    def registerOperator(self, name, label, code):
+        def execute(self, context):
+            exec(code)
+            return {"FINISHED"}
+
+        opClass = type(
+            "Prism_" + name,
+            (bpy.types.Operator,),
+            {
+                "bl_idname": "object.prism_%s" % name,
+                "bl_label": label,
+                "execute": execute
+            },
+        )
+
+        bpy.utils.register_class(opClass)
+
+    @err_catcher(name=__name__)
+    def addMenuToMainMenuBar(self, name, label, options):
+        for option in options:
+            self.registerOperator(option["name"], option["label"], option["code"])
+
+        def draw(self, context):
+            layout = self.layout
+
+            for option in options:
+                row = layout.row()
+                row.operator("object.prism_%s" % option["name"])
+
+        menuClass = type(
+            "TOPBAR_MT_" + name,
+            (bpy.types.Menu,),
+            {
+                "bl_label": label,
+                "draw": draw,
+            },
+        )
+
+        def draw(self, context):
+            self.layout.menu("TOPBAR_MT_" + name)
+
+        bpy.utils.register_class(menuClass)
+        bpy.types.TOPBAR_MT_editor_menus.append(draw)
 
     @err_catcher(name=__name__)
     def sm_export_preExecute(self, origin, startFrame, endFrame):
@@ -995,58 +1066,63 @@ class Prism_Blender_Functions(object):
                     if len(list(i.links)) > 0:
                         connections.append([i.links[0], idx])
 
-                m.base_path = os.path.dirname(rSettings["outputName"])
+                extensions = {
+                    "PNG": ".png",
+                    "JPEG": ".jpg",
+                    "JPEG2000": "jpg",
+                    "TARGA": ".tga",
+                    "TARGA_RAW": ".tga",
+                    "OPEN_EXR_MULTILAYER": ".exr",
+                    "OPEN_EXR": ".exr",
+                    "TIFF": ".tif",
+                }
+                nodeExt = extensions[m.format.file_format]
+                if m.format.file_format == "OPEN_EXR_MULTILAYER":
+                    m.base_path = rSettings["outputName"]
+                    newOutputPath = rSettings["outputName"]
+                    if connections:
+                        usePasses = True
+                else:
+                    m.base_path = os.path.dirname(rSettings["outputName"])
+                    for i, idx in connections:
+                        passName = i.from_socket.name
 
-                for i, idx in connections:
-                    passName = i.from_socket.name
+                        if passName == "Image":
+                            passName = "beauty"
 
-                    if passName == "Image":
-                        passName = "beauty"
+                        if i.from_node.type == "R_LAYERS":
+                            if len(rlayerNodes) > 1:
+                                passName = "%s_%s" % (i.from_node.layer, passName)
 
-                    if i.from_node.type == "R_LAYERS":
-                        if len(rlayerNodes) > 1:
-                            passName = "%s_%s" % (i.from_node.layer, passName)
+                        else:
+                            if hasattr(i.from_node, "label") and i.from_node.label != "":
+                                passName = i.from_node.label
 
-                    else:
-                        if hasattr(i.from_node, "label") and i.from_node.label != "":
-                            passName = i.from_node.label
+                        curSlot = m.file_slots[idx]
+                        if curSlot.use_node_format:
+                            ext = nodeExt
+                        else:
+                            ext = extensions[curSlot.format.file_format]
 
-                    extensions = {
-                        "PNG": ".png",
-                        "JPEG": ".jpg",
-                        "JPEG2000": "jpg",
-                        "TARGA": ".tga",
-                        "TARGA_RAW": ".tga",
-                        "OPEN_EXR_MULTILAYER": ".exr",
-                        "OPEN_EXR": ".exr",
-                        "TIFF": ".tif",
-                    }
-                    nodeExt = extensions[m.format.file_format]
-                    curSlot = m.file_slots[idx]
-                    if curSlot.use_node_format:
-                        ext = nodeExt
-                    else:
-                        ext = extensions[curSlot.format.file_format]
-
-                    curSlot.path = "../%s/%s" % (
-                        passName,
-                        os.path.splitext(os.path.basename(rSettings["outputName"]))[
-                            0
-                        ].replace("beauty", passName)
-                        + ext,
-                    )
-                    newOutputPath = os.path.abspath(
-                        os.path.join(
-                            rSettings["outputName"],
-                            "../..",
+                        curSlot.path = "../%s/%s" % (
                             passName,
                             os.path.splitext(os.path.basename(rSettings["outputName"]))[
                                 0
                             ].replace("beauty", passName)
                             + ext,
                         )
-                    )
-                    usePasses = True
+                        newOutputPath = os.path.abspath(
+                            os.path.join(
+                                rSettings["outputName"],
+                                "../..",
+                                passName,
+                                os.path.splitext(os.path.basename(rSettings["outputName"]))[
+                                    0
+                                ].replace("beauty", passName)
+                                + ext,
+                            )
+                        )
+                        usePasses = True
 
         if usePasses:
             rSettings["outputName"] = newOutputPath
@@ -1259,10 +1335,10 @@ class Prism_Blender_Functions(object):
         return warnings
 
     @err_catcher(name=__name__)
-    def sm_render_fixOutputPath(self, origin, outputName, singleFrame=False):
-        if not singleFrame:
+    def sm_render_fixOutputPath(self, origin, outputName, singleFrame=False, state=None):
+        if (not singleFrame) or self.useNodeAOVs() or (state and not state.gb_submit.isHidden() and state.gb_submit.isChecked()):
             outputName = (
-                os.path.splitext(outputName)[0]
+                os.path.splitext(outputName)[0].rstrip("#")
                 + "." + "#"*self.core.framePadding
                 + os.path.splitext(outputName)[1]
             )
@@ -1343,7 +1419,7 @@ class Prism_Blender_Functions(object):
                 bpy.ops.import_scene.fbx(filepath=importPath)
 
     @err_catcher(name=__name__)
-    def importObj(self, importPath, origin):
+    def importObj(self, importPath, origin=None):
         if bpy.app.version < (4, 0, 0):
             bpy.ops.import_scene.obj(self.getOverrideContext(origin), filepath=importPath)
         else:
@@ -1466,6 +1542,18 @@ class Prism_Blender_Functions(object):
                 return obj
 
     @err_catcher(name=__name__)
+    def isolateSelection(self):
+        if bpy.app.version < (4, 0, 0):
+            bpy.ops.view3d.localview(self.getOverrideContext(context="VIEW_3D"))
+        else:
+            with bpy.context.temp_override(**self.getOverrideContext(context="VIEW_3D")):
+                print(bpy.context.space_data.local_view)
+                if bpy.context.space_data.local_view:
+                    bpy.ops.view3d.localview()
+
+                bpy.ops.view3d.localview()
+
+    @err_catcher(name=__name__)
     def sm_import_disableObjectTracking(self, origin):
         stateGroup = [x for x in self.getGroups() if x.name == origin.setName]
         if len(stateGroup) > 0:
@@ -1514,18 +1602,27 @@ class Prism_Blender_Functions(object):
         origin.b_resPresets.setMinimumWidth(30 * self.core.uiScaleFactor)
         origin.b_resPresets.setMinimumHeight(0)
         origin.b_resPresets.setMaximumHeight(500 * self.core.uiScaleFactor)
+        origin.cb_formats.addItem(".mp4 (with audio)")
 
     @err_catcher(name=__name__)
     def prePlayblast(self, **kwargs):
+        outputName = origOutputName = kwargs["outputpath"]
+        tmpOutputName = os.path.splitext(kwargs["outputpath"])[0].rstrip("#")
+        tmpOutputName = tmpOutputName.strip(".")
+        selFmt = kwargs["state"].cb_formats.currentText()
+        if selFmt == ".mp4 (with audio)":
+            outputName = tmpOutputName + ".mp4"
+
         renderAnim = kwargs["startframe"] != kwargs["endframe"]
         if not renderAnim:
             outputName = (
-                os.path.splitext(kwargs["outputpath"])[0]
+                os.path.splitext(outputName)[0]
                 + "."
                 + ("%0" + str(self.core.framePadding) + "d") % kwargs["startframe"]
-                + os.path.splitext(kwargs["outputpath"])[1]
+                + os.path.splitext(outputName)[1]
             )
 
+        if outputName != origOutputName:
             return {"outputName": outputName}
 
     @err_catcher(name=__name__)
@@ -1560,7 +1657,13 @@ class Prism_Blender_Functions(object):
             bpy.context.scene.render.resolution_percentage = 100
 
         bpy.context.scene.render.filepath = os.path.normpath(outputName)
-        bpy.context.scene.render.image_settings.file_format = "JPEG"
+        base, ext = os.path.splitext(outputName)
+        if ext == ".jpg":
+            bpy.context.scene.render.image_settings.file_format = "JPEG"
+        if ext == ".mp4":
+            bpy.context.scene.render.image_settings.file_format = "FFMPEG"
+            bpy.context.scene.render.ffmpeg.format = "MPEG4"
+            bpy.context.scene.render.ffmpeg.audio_codec = "MP3"
 
         if bpy.app.version < (4, 0, 0):
             bpy.ops.render.opengl(

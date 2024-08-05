@@ -36,6 +36,7 @@ import os
 import sys
 import platform
 import logging
+from datetime import datetime
 
 if sys.version[0] == "3":
     pVersion = 3
@@ -87,6 +88,7 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
     showing = Signal(object)
 
     def __init__(self, core):
+        startTime = datetime.now()
         QMainWindow.__init__(self)
         self.setupUi(self)
         self.core = core
@@ -109,6 +111,8 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.loadLayout()
         self.connectEvents()
         self.core.callback(name="onProjectBrowserStartup", args=[self])
+        endTime = datetime.now()
+        logger.debug("Project Browser startup duration: %s" % (endTime - startTime))
 
     @err_catcher(name=__name__)
     def connectEvents(self):
@@ -121,6 +125,7 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.actionAutoplay.toggled.connect(self.mediaBrowser.triggerAutoplay)
         self.act_filesizes.toggled.connect(self.triggerShowFileSizes)
         self.act_rememberTab.toggled.connect(self.triggerRememberTab)
+        self.act_rememberWidgetSizes.toggled.connect(self.triggerRememberWidgetSizes)
         self.tbw_project.currentChanged.connect(self.tabChanged)
 
     def enterEvent(self, event):
@@ -164,6 +169,13 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.actionWebsite.setIcon(icon)
         self.helpMenu.addAction(self.actionWebsite)
 
+        self.actionDiscord = QAction(self.core.tr("Discord"), self)
+        self.actionDiscord.triggered.connect(lambda: self.core.openWebsite("discord"))
+        path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "discord.png")
+        icon = self.core.media.getColoredIcon(path)
+        self.actionDiscord.setIcon(icon)
+        self.helpMenu.addAction(self.actionDiscord)
+
         self.actionWebsite = QAction(self.core.tr("Tutorials"), self)
         self.actionWebsite.triggered.connect(lambda: self.core.openWebsite("tutorials"))
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "tutorials.png")
@@ -181,7 +193,7 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.helpMenu.addAction(self.actionWebsite)
 
         self.actionAbout = QAction(self.core.tr("About..."), self)
-        self.actionAbout.triggered.connect(self.core.showAbout)
+        self.actionAbout.triggered.connect(lambda x=None: self.core.showAbout())
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "info.png")
         icon = self.core.media.getColoredIcon(path)
         self.actionAbout.setIcon(icon)
@@ -198,6 +210,11 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.act_rememberTab.setCheckable(True)
         self.act_rememberTab.setChecked(True)
         self.menuTools.insertAction(self.actionAutoplay, self.act_rememberTab)
+
+        self.act_rememberWidgetSizes = QAction("Remember widget sizes", self)
+        self.act_rememberWidgetSizes.setCheckable(True)
+        self.act_rememberWidgetSizes.setChecked(False)
+        self.menuTools.insertAction(self.actionAutoplay, self.act_rememberWidgetSizes)
 
         path = os.path.join(self.core.prismRoot, "Scripts", "UserInterfacesPrism", "configure.png")
         icon = self.core.media.getColoredIcon(path)
@@ -312,6 +329,9 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
 
         if "rememberTab" in glbData:
             self.act_rememberTab.setChecked(glbData["rememberTab"])
+
+        if "rememberWidgetSizes" in brsData:
+            self.act_rememberWidgetSizes.setChecked(brsData["rememberWidgetSizes"])
 
         self.sceneBrowser = SceneBrowser.SceneBrowser(
             core=self.core, projectBrowser=self, refresh=False
@@ -652,12 +672,18 @@ class ProjectBrowser(QMainWindow, ProjectBrowser_ui.Ui_mw_ProjectBrowser):
         self.core.setConfig("globals", "rememberTab", checked)
 
     @err_catcher(name=__name__)
+    def triggerRememberWidgetSizes(self, checked=False):
+        self.core.setConfig("browser", "rememberWidgetSizes", checked)
+
+    @err_catcher(name=__name__)
     def triggerCloseLoad(self, checked=False):
         self.core.setConfig("browser", self.closeParm, checked)
 
     @err_catcher(name=__name__)
     def showTab(self, tab):
-        if tab != self.tbw_project.currentWidget().property("tabType"):
+        if tab == self.tbw_project.currentWidget().property("tabType"):
+            return True
+        else:
             for i in range(self.tbw_project.count()):
                 if self.tbw_project.widget(i).property("tabType") == tab:
                     idx = i

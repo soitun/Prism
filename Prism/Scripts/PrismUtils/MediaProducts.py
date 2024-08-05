@@ -57,7 +57,7 @@ class MediaProducts(object):
         self.core = core
 
     @err_catcher(name=__name__)
-    def createExternalMedia(self, filepath, entity, identifier, version, action="copy"):
+    def createExternalMedia(self, filepath, entity, identifier, version, action="copy", location="global"):
         if entity["type"] == "asset":
             key = "renderFilesAssets"
         elif entity["type"] == "shot":
@@ -73,6 +73,9 @@ class MediaProducts(object):
         context["aov"] = "rgb"
         if "comment" not in context:
             context["comment"] = ""
+
+        basePath = self.core.paths.getRenderProductBasePaths()[location]
+        context["project_path"] = basePath
 
         path = self.core.projects.getResolvedProjectStructurePath(key, context=context)
         folderpath = os.path.dirname(path)
@@ -126,6 +129,18 @@ class MediaProducts(object):
                 curLoc = rdFile.read()
 
         return curLoc
+
+    @err_catcher(name=__name__)
+    def getDisplayNameForIdentifier(self, identifier, mediaType):
+        display = identifier
+        if mediaType == "2drenders":
+            display += " (2d)"
+        elif mediaType == "playblasts":
+            display += " (playblast)"
+        elif mediaType == "externalMedia":
+            display += " (external)"
+
+        return display
 
     @err_catcher(name=__name__)
     def getIdentifiersByType(self, entity, locations=None):
@@ -369,6 +384,9 @@ class MediaProducts(object):
         if context.get("locations"):
             locations = self.core.paths.getRenderProductBasePaths()
             for loc in context["locations"]:
+                if loc not in locations:
+                    continue
+
                 ctx = context.copy()
                 ctx["project_path"] = locations[loc]
                 template = self.core.projects.getResolvedProjectStructurePath(
@@ -388,16 +406,45 @@ class MediaProducts(object):
                 logger.warning("folder doesn't exist: %s" % folder)
                 continue
 
-            if context.get("source"):
+            if context.get("redirect"):
+                base, ext = os.path.splitext(context["redirect"])
+                if ext:
+                    globPath = context["redirect"].replace("#", "?")
+                    files = glob.glob(globPath)
+                else:
+                    if context.get("source"):
+                        globPath = os.path.join(context["redirect"], context["source"].replace("#", "?"))
+                        files = glob.glob(globPath)
+                    else:
+                        for rdroot, rdfolders, rdfiles in os.walk(context["redirect"]):
+                            break
+
+                        files = [os.path.join(rdroot, rdf) for rdf in rdfiles]
+
+            elif context.get("source"):
                 globPath = os.path.join(folder, context["source"].replace("#", "?"))
                 files = glob.glob(globPath)
-
             else:
                 for root, folders, files in os.walk(folder):
                     break
 
             for file in files:
-                filepaths.append(os.path.join(folder, file))
+                filepath = os.path.join(folder, file)
+                if file == "REDIRECT.txt":
+                    with open(filepath, "r") as rfile:
+                        rpath = rfile.read()
+                        base, ext = os.path.splitext(rpath)
+                        if ext:
+                            filepaths.append(rpath)
+                        else:
+                            for rdroot, rdfolders, rdfiles in os.walk(rpath):
+                                break
+
+                            filepaths += [os.path.join(rdroot, rdf) for rdf in rdfiles]
+
+                    context["redirect"] = rpath
+                else:
+                    filepaths.append(filepath)
 
         return filepaths
 
@@ -530,7 +577,7 @@ class MediaProducts(object):
     @err_catcher(name=__name__)
     def getLatestVersionFromFilepath(self, filepath, includeMaster=True):
         data = self.getDataFromFilepath(filepath)
-        if not data:
+        if not data or len(data.keys()) <= 1:
             return
 
         versions = self.getVersionsFromIdentifier(data)
@@ -559,7 +606,9 @@ class MediaProducts(object):
         ignoreEmpty=False,
         ignoreFolder=False,
         user=None,
-        additionalContext=None
+        additionalContext=None,
+        state=None,
+        filenameTemplate=None,
     ):
         framePadding = framePadding or ""
         comment = comment or ""
@@ -602,8 +651,8 @@ class MediaProducts(object):
             key, context=context
         )
         outputPath = getattr(
-            self.core.appPlugin, "sm_render_fixOutputPath", lambda x, y, singleFrame: y
-        )(self, outputPath, singleFrame=singleFrame)
+            self.core.appPlugin, "sm_render_fixOutputPath", lambda x, y, singleFrame, state: y
+        )(self, outputPath, singleFrame=singleFrame, state=state)
         if returnDetails:
             context["path"] = outputPath
             return context
@@ -622,6 +671,7 @@ class MediaProducts(object):
         location="global",
         returnDetails=False,
         user=None,
+        filenameTemplate=None,
     ):
         versionUser = user or self.core.user
         basePath = self.core.paths.getRenderProductBasePaths()[location]
@@ -674,6 +724,9 @@ class MediaProducts(object):
 
         locations = self.core.paths.getRenderProductBasePaths()
         validData = []
+        if "version" in context:
+            del context["version"]
+
         for loc in locations:
             ctx = context.copy()
             ctx["project_path"] = locations[loc]
@@ -758,6 +811,17 @@ class MediaProducts(object):
 
         template = self.core.projects.getResolvedProjectStructurePath(key)
         data = self.core.projects.extractKeysFromPath(path, template, context={"entityType": entityType})
+        if not data:
+            if entityType == "asset":
+                key = "playblastFilesAssets"
+            elif entityType == "shot":
+                key = "playblastFilesShots"
+
+            template = self.core.projects.getResolvedProjectStructurePath(key)
+            data = self.core.projects.extractKeysFromPath(path, template, context={"entityType": entityType})
+            if data:
+                data["mediaType"] = "playblasts"
+
         data["type"] = entityType
         if "asset_path" in data:
             data["asset"] = os.path.basename(data["asset_path"])
@@ -775,7 +839,6 @@ class MediaProducts(object):
 
         template = self.core.projects.getResolvedProjectStructurePath(key)
         data = self.core.projects.extractKeysFromPath(path, template, context={"entityType": entityType})
-
         if "version" not in data:
             return
 
@@ -1013,8 +1076,8 @@ class MediaProducts(object):
         return masterPath
 
     @err_catcher(name=__name__)
-    def getMasterVersionNumber(self, masterPath):
-        versionData = self.core.paths.getRenderProductData(masterPath, validateModTime=True)
+    def getMasterVersionNumber(self, masterPath, allowCache=True):
+        versionData = self.core.paths.getRenderProductData(masterPath, validateModTime=True, allowCache=allowCache)
         if "versionpaths" in versionData:
             context = versionData.copy()
             for path in versionData["versionpaths"]:
@@ -1023,6 +1086,12 @@ class MediaProducts(object):
                 )
                 if vName:
                     return vName
+        else:
+            if "sourceVersion" in versionData:
+                return versionData["sourceVersion"]
+
+            if "version" in versionData:
+                return versionData["version"]
 
     @err_catcher(name=__name__)
     def getMasterVersionLabel(self, path):
@@ -1174,7 +1243,11 @@ class MediaProducts(object):
         )
 
     @err_catcher(name=__name__)
-    def createIdentifier(self, entity, identifier, identifierType="3drenders"):
+    def getLinkedToTasks(self):
+        return self.core.getConfig("globals", "productTasks", config="project")
+
+    @err_catcher(name=__name__)
+    def createIdentifier(self, entity, identifier, identifierType="3drenders", location="global"):
         context = entity.copy()
         context["identifier"] = identifier
         if "task" not in context:
@@ -1183,6 +1256,8 @@ class MediaProducts(object):
         if "user" not in context:
             context["user"] = self.core.user
 
+        basePath = self.core.paths.getRenderProductBasePaths()[location]
+        context["project_path"] = basePath
         path = self.core.projects.getResolvedProjectStructurePath(identifierType, context)
 
         if not os.path.exists(path):
@@ -1204,7 +1279,7 @@ class MediaProducts(object):
         return path
 
     @err_catcher(name=__name__)
-    def createVersion(self, entity, identifier, version, identifierType="3drenders"):
+    def createVersion(self, entity, identifier, version, identifierType="3drenders", location="global"):
         context = entity.copy()
         context["identifier"] = identifier
         context["mediaType"] = identifierType
@@ -1215,6 +1290,8 @@ class MediaProducts(object):
         if "user" not in context:
             context["user"] = self.core.user
 
+        basePath = self.core.paths.getRenderProductBasePaths()[location]
+        context["project_path"] = basePath
         if context.get("mediaType") == "playblasts":
             key = "playblastVersions"
         else:
@@ -1273,7 +1350,7 @@ class MediaProducts(object):
         return path
 
     @err_catcher(name=__name__)
-    def ingestMedia(self, files, entity, identifier, version, aov, mediaType="3drenders"):
+    def ingestMedia(self, files, entity, identifier, version, aov, mediaType="3drenders", filenameTemplate=None, location="global"):
         if not files:
             return
 
@@ -1283,7 +1360,9 @@ class MediaProducts(object):
             "version": version,
             "aov": aov,
             "user": self.core.user,
-            "mediaType": mediaType
+            "mediaType": mediaType,
+            "filenameTemplate": filenameTemplate,
+            "location": location,
         }
 
         baseTxt = "Copying file - please wait..\n\n"
@@ -1362,6 +1441,7 @@ class MediaProducts(object):
             details["version"] = kwargs["version"]
             details["comment"] = kwargs.get("comment", "")
             details["extension"] = kwargs["extension"]
+            details["mediaType"] = kwargs["mediaType"]
 
             infoPath = self.getMediaVersionInfoPathFromFilepath(targetPath, mediaType=mediaType)
             self.core.saveVersionInfo(filepath=os.path.dirname(infoPath), details=details)

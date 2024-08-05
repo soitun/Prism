@@ -400,8 +400,11 @@ class EditShot(QDialog, EditShot_ui.Ui_dlg_EditShot):
 
             shotRange = self.core.entities.getShotRange(self.shotData)
             if shotRange:
-                self.sp_startFrame.setValue(shotRange[0])
-                self.sp_endFrame.setValue(shotRange[1])
+                if shotRange[0] is not None:
+                    self.sp_startFrame.setValue(shotRange[0])
+
+                if shotRange[1] is not None:
+                    self.sp_endFrame.setValue(shotRange[1])
 
             width = self.shotPrvXres
             height = self.shotPrvYres

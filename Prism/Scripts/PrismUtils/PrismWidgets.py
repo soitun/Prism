@@ -607,7 +607,12 @@ class SaveComment(QDialog, SaveComment_ui.Ui_dlg_SaveComment):
     def setEmptyPreview(self):
         imgFile = os.path.join(self.core.projects.getFallbackFolder(), "noFileBig.jpg")
         pmap = self.core.media.getPixmapFromPath(imgFile)
-        pmap = pmap.scaled(QSize(self.core.scenePreviewWidth, self.core.scenePreviewHeight))
+        if pmap:
+            pmap = pmap.scaled(QSize(self.core.scenePreviewWidth, self.core.scenePreviewHeight))
+        else:
+            pmap = QPixmap(self.core.scenePreviewWidth, self.core.scenePreviewHeight)
+            pmap.fill(Qt.black)
+
         self.l_preview.setPixmap(pmap)
 
     @err_catcher(name=__name__)

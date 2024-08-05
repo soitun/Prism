@@ -19,10 +19,10 @@ class Ui_dlg_ProductBrowser(object):
         dlg_ProductBrowser.resize(1294, 696)
         self.verticalLayout_4 = QVBoxLayout(dlg_ProductBrowser)
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.splitter = QSplitter(dlg_ProductBrowser)
-        self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Horizontal)
-        self.w_tasks = QWidget(self.splitter)
+        self.splitter1 = QSplitter(dlg_ProductBrowser)
+        self.splitter1.setObjectName(u"splitter1")
+        self.splitter1.setOrientation(Qt.Horizontal)
+        self.w_tasks = QWidget(self.splitter1)
         self.w_tasks.setObjectName(u"w_tasks")
         sizePolicy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(10)
@@ -49,8 +49,8 @@ class Ui_dlg_ProductBrowser(object):
 
         self.verticalLayout_3.addWidget(self.tw_identifier)
 
-        self.splitter.addWidget(self.w_tasks)
-        self.w_versions = QWidget(self.splitter)
+        self.splitter1.addWidget(self.w_tasks)
+        self.w_versions = QWidget(self.splitter1)
         self.w_versions.setObjectName(u"w_versions")
         sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         sizePolicy1.setHorizontalStretch(30)
@@ -97,9 +97,9 @@ class Ui_dlg_ProductBrowser(object):
 
         self.verticalLayout_2.addWidget(self.tw_versions)
 
-        self.splitter.addWidget(self.w_versions)
+        self.splitter1.addWidget(self.w_versions)
 
-        self.verticalLayout_4.addWidget(self.splitter)
+        self.verticalLayout_4.addWidget(self.splitter1)
 
 
         self.retranslateUi(dlg_ProductBrowser)

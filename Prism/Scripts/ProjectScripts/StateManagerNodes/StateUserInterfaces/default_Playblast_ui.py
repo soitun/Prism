@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'default_Playblast.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.4.2
+## Created by: Qt User Interface Compiler version 6.6.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -16,7 +16,7 @@ class Ui_wg_Playblast(object):
     def setupUi(self, wg_Playblast):
         if not wg_Playblast.objectName():
             wg_Playblast.setObjectName(u"wg_Playblast")
-        wg_Playblast.resize(340, 598)
+        wg_Playblast.resize(342, 822)
         self.verticalLayout = QVBoxLayout(wg_Playblast)
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
@@ -62,7 +62,7 @@ class Ui_wg_Playblast(object):
 
         self.l_taskName = QLabel(self.widget_10)
         self.l_taskName.setObjectName(u"l_taskName")
-        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.l_taskName.sizePolicy().hasHeightForWidth())
@@ -92,7 +92,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout.addWidget(self.label_3)
 
-        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_2 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout.addItem(self.horizontalSpacer_2)
 
@@ -118,7 +118,6 @@ class Ui_wg_Playblast(object):
 
         self.sp_rangeEnd = QSpinBox(self.f_frameRange_2)
         self.sp_rangeEnd.setObjectName(u"sp_rangeEnd")
-        self.sp_rangeEnd.setMaximumSize(QSize(55, 16777215))
         self.sp_rangeEnd.setMaximum(99999)
         self.sp_rangeEnd.setValue(1100)
 
@@ -126,7 +125,6 @@ class Ui_wg_Playblast(object):
 
         self.sp_rangeStart = QSpinBox(self.f_frameRange_2)
         self.sp_rangeStart.setObjectName(u"sp_rangeStart")
-        self.sp_rangeStart.setMaximumSize(QSize(55, 16777215))
         self.sp_rangeStart.setMaximum(99999)
         self.sp_rangeStart.setValue(1001)
 
@@ -144,7 +142,7 @@ class Ui_wg_Playblast(object):
 
         self.gridLayout.addWidget(self.l_rangeStartInfo, 0, 0, 1, 1)
 
-        self.horizontalSpacer_14 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_14 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.gridLayout.addItem(self.horizontalSpacer_14, 0, 4, 1, 1)
 
@@ -167,7 +165,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_2.addWidget(self.label)
 
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer)
 
@@ -192,7 +190,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_9.addWidget(self.label_6)
 
-        self.horizontalSpacer_13 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_13 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_9.addItem(self.horizontalSpacer_13)
 
@@ -242,7 +240,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_18.addWidget(self.l_outPath_2)
 
-        self.horizontalSpacer_28 = QSpacerItem(113, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_28 = QSpacerItem(113, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_18.addItem(self.horizontalSpacer_28)
 
@@ -266,7 +264,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_17.addWidget(self.l_location)
 
-        self.horizontalSpacer_27 = QSpacerItem(113, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_27 = QSpacerItem(113, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_17.addItem(self.horizontalSpacer_27)
 
@@ -290,7 +288,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_3.addWidget(self.label_4)
 
-        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_3 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_3.addItem(self.horizontalSpacer_3)
 
@@ -320,7 +318,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_13.addWidget(self.l_manager)
 
-        self.horizontalSpacer_19 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_19 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_13.addItem(self.horizontalSpacer_19)
 
@@ -343,7 +341,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_21.addWidget(self.l_rjPrio)
 
-        self.horizontalSpacer_16 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_16 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_21.addItem(self.horizontalSpacer_16)
 
@@ -367,7 +365,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_22.addWidget(self.label_15)
 
-        self.horizontalSpacer_17 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_17 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_22.addItem(self.horizontalSpacer_17)
 
@@ -391,7 +389,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_28.addWidget(self.l_rjTimeout)
 
-        self.horizontalSpacer_23 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_23 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_28.addItem(self.horizontalSpacer_23)
 
@@ -416,7 +414,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_26.addWidget(self.label_18)
 
-        self.horizontalSpacer_20 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_20 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_26.addItem(self.horizontalSpacer_20)
 
@@ -439,7 +437,7 @@ class Ui_wg_Playblast(object):
 
         self.horizontalLayout_29.addWidget(self.l_dlConcurrentTasks)
 
-        self.horizontalSpacer_24 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.horizontalSpacer_24 = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_29.addItem(self.horizontalSpacer_24)
 
@@ -472,7 +470,7 @@ class Ui_wg_Playblast(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 289, 69))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 269, 138))
         self.verticalLayout_3 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
         self.l_pathLast = QLabel(self.scrollAreaWidgetContents)

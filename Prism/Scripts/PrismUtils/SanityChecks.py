@@ -205,32 +205,45 @@ class SanityChecks(object):
         if int(curRange[0]) == int(shotRange[0]) and int(curRange[1]) == int(shotRange[1]):
             return
 
+        handleRange = self.core.entities.getShotRange(fnameData, handles=True)
+        hasHandles = handleRange != shotRange
+        if hasHandles and int(curRange[0]) == int(handleRange[0]) and int(curRange[1]) == int(handleRange[1]):
+            return
+
         shotName = self.core.entities.getShotName(fnameData)
         msgString = (
             "The framerange of the current scene doesn't match the framerange of the shot:\n\nFramerange of current scene:\n%s - %s\n\nFramerange of shot %s:\n%s - %s"
             % (int(curRange[0]), int(curRange[1]), shotName, shotRange[0], shotRange[1])
         )
+        if hasHandles:
+            msgString += " (%s - %s)" % (handleRange[0], handleRange[1])
 
         if self.core.forceFramerange:
             self.core.setFrameRange(int(shotRange[0]), int(shotRange[1]))
         else:
+            buttons = ["Set shotrange in scene", "Skip"]
+            if hasHandles:
+                buttons.insert(1, "Set shotrange in scene (with handles)")
+
             msg = self.core.popupQuestion(
                 msgString,
                 title="Framerange mismatch",
-                buttons=["Set shotrange in scene", "Skip"],
+                buttons=buttons,
                 escapeButton="Skip",
                 default="Skip",
                 doExec=False,
             )
             if not self.core.isStr(msg):
-                msg.buttonClicked.connect(lambda x: self.onCheckFramerangeClicked(x, shotRange))
+                msg.buttonClicked.connect(lambda x: self.onCheckFramerangeClicked(x, shotRange, handleRange))
                 msg.show()
 
     @err_catcher(name=__name__)
-    def onCheckFramerangeClicked(self, button, shotRange):
+    def onCheckFramerangeClicked(self, button, shotRange, handleRange=None):
         result = button.text()
         if result == "Set shotrange in scene":
             self.core.setFrameRange(int(shotRange[0]), int(shotRange[1]))
+        elif result == "Set shotrange in scene (with handles)":
+            self.core.setFrameRange(int(handleRange[0]), int(handleRange[1]))
 
     @err_catcher(name=__name__)
     def checkFPS(self):

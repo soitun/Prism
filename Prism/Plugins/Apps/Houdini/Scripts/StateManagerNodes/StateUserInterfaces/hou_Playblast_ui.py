@@ -118,7 +118,6 @@ class Ui_wg_Playblast(object):
 
         self.sp_rangeEnd = QSpinBox(self.f_frameRange_2)
         self.sp_rangeEnd.setObjectName(u"sp_rangeEnd")
-        self.sp_rangeEnd.setMaximumSize(QSize(55, 16777215))
         self.sp_rangeEnd.setMaximum(99999)
         self.sp_rangeEnd.setValue(1100)
 
@@ -126,7 +125,6 @@ class Ui_wg_Playblast(object):
 
         self.sp_rangeStart = QSpinBox(self.f_frameRange_2)
         self.sp_rangeStart.setObjectName(u"sp_rangeStart")
-        self.sp_rangeStart.setMaximumSize(QSize(55, 16777215))
         self.sp_rangeStart.setMaximum(99999)
         self.sp_rangeStart.setValue(1001)
 

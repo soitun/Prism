@@ -127,12 +127,13 @@ class DependencyViewer(QDialog, DependencyViewer_ui.Ui_dlg_DependencyViewer):
         else:
             return
 
-        iname = lw.indexAt(pos).data()
-
+        index = lw.indexAt(pos)
+        iname = index.data()
         if iname is None:
             return
 
-        dirPath = lw.model().index(lw.indexAt(pos).row(), 4).data()
+        item = lw.itemFromIndex(index)
+        dirPath = item.data(4, Qt.DisplayRole)
 
         openex = QAction("Open in Explorer", self)
         openex.triggered.connect(lambda: self.core.openFolder(dirPath))
@@ -252,7 +253,6 @@ class DependencyViewer(QDialog, DependencyViewer_ui.Ui_dlg_DependencyViewer):
             )
 
             item.setForeground(1, existColor)
-
             depItem.addChild(item)
 
             curID = str(len(self.dependencies) + 1)

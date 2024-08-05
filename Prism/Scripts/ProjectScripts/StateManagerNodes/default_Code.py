@@ -73,14 +73,10 @@ class CodeClass(object):
         if "code" in data:
             self.te_code.setPlainText(data["code"])
         if "stateenabled" in data and self.listType == "Export":
-            self.state.setCheckState(
-                0,
-                eval(
-                    data["stateenabled"]
-                    .replace("PySide.QtCore.", "")
-                    .replace("PySide2.QtCore.", "")
-                ),
-            )
+            if type(data["stateenabled"]) == int:
+                self.state.setCheckState(
+                    0, Qt.CheckState(data["stateenabled"]),
+                )
 
         self.core.callback("onStateSettingsLoaded", self, data)
 
@@ -202,7 +198,7 @@ class CodeClass(object):
             {
                 "statename": self.e_name.text(),
                 "code": self.te_code.toPlainText(),
-                "stateenabled": str(self.state.checkState(0)),
+                "stateenabled": self.core.getCheckStateValue(self.state.checkState(0)),
             }
         )
         return stateProps

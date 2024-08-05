@@ -33,7 +33,7 @@ class Ui_dlg_UserSettings(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 597, 739))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 457, 739))
         self.horizontalLayout_9 = QHBoxLayout(self.scrollAreaWidgetContents)
         self.horizontalLayout_9.setSpacing(20)
         self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
@@ -415,11 +415,6 @@ class Ui_dlg_UserSettings(object):
 
         self.lo_miscellaneous.addWidget(self.w_startTray)
 
-        self.chb_highDPI = QCheckBox(self.gb_miscellaneous)
-        self.chb_highDPI.setObjectName(u"chb_highDPI")
-
-        self.lo_miscellaneous.addWidget(self.chb_highDPI)
-
         self.chb_errorReports = QCheckBox(self.gb_miscellaneous)
         self.chb_errorReports.setObjectName(u"chb_errorReports")
         self.chb_errorReports.setChecked(True)
@@ -630,7 +625,6 @@ class Ui_dlg_UserSettings(object):
         self.chb_mediaThumbnails.setText(QCoreApplication.translate("dlg_UserSettings", u"Automatically generate thumbnails for media", None))
         self.chb_trayStartup.setText(QCoreApplication.translate("dlg_UserSettings", u"Show Prism tray icon on system startup", None))
         self.b_startTray.setText(QCoreApplication.translate("dlg_UserSettings", u"Start Prism tray now", None))
-        self.chb_highDPI.setText(QCoreApplication.translate("dlg_UserSettings", u"HighDPI support (requires complete application restart) (experimental)", None))
         self.chb_errorReports.setText(QCoreApplication.translate("dlg_UserSettings", u"Send anonymous error reports", None))
         self.chb_debug.setText(QCoreApplication.translate("dlg_UserSettings", u"Debug mode", None))
         self.l_styleSheet.setText(QCoreApplication.translate("dlg_UserSettings", u"Standalone Style Sheet:", None))

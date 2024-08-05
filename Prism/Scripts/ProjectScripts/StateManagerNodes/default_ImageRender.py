@@ -246,14 +246,10 @@ class ImageRenderClass(object):
             self.l_pathLast.setText(lePath)
             self.l_pathLast.setToolTip(lePath)
         if "stateenabled" in data:
-            self.state.setCheckState(
-                0,
-                eval(
-                    data["stateenabled"]
-                    .replace("PySide.QtCore.", "")
-                    .replace("PySide2.QtCore.", "")
-                ),
-            )
+            if type(data["stateenabled"]) == int:
+                self.state.setCheckState(
+                    0, Qt.CheckState(data["stateenabled"]),
+                )
 
         self.core.callback("onStateSettingsLoaded", self, data)
 
@@ -1049,6 +1045,7 @@ class ImageRenderClass(object):
             singleFrame=singleFrame,
             returnDetails=True,
             mediaType=self.mediaType,
+            state=self,
         )
 
         outputFolder = os.path.dirname(outputPathData["path"])
@@ -1093,6 +1090,7 @@ class ImageRenderClass(object):
                 ]
 
             outputName, outputPath, hVersion = self.getOutputName(useVersion=useVersion)
+            expandedOutputPath = os.path.expandvars(outputPath)
 
             outLength = len(outputName)
             if platform.system() == "Windows" and os.getenv("PRISM_IGNORE_PATH_LENGTH") != "1" and outLength > 255:
@@ -1102,8 +1100,8 @@ class ImageRenderClass(object):
                     % outLength
                 ]
 
-            if not os.path.exists(os.path.dirname(outputPath)):
-                os.makedirs(os.path.dirname(outputPath))
+            if not os.path.exists(os.path.dirname(expandedOutputPath)):
+                os.makedirs(os.path.dirname(expandedOutputPath))
 
             details = context.copy()
             if "filename" in details:
@@ -1118,9 +1116,9 @@ class ImageRenderClass(object):
             details["comment"] = self.stateManager.publishComment
 
             if self.mediaType == "3drenders":
-                infopath = os.path.dirname(outputPath)
+                infopath = os.path.dirname(expandedOutputPath)
             else:
-                infopath = outputPath
+                infopath = expandedOutputPath
 
             self.core.saveVersionInfo(
                 filepath=infopath, details=details
@@ -1167,12 +1165,14 @@ class ImageRenderClass(object):
                         + " - error - %s" % res.get("details", "preRender hook returned False")
                     ]
 
-            if not os.path.exists(os.path.dirname(rSettings["outputName"])):
-                os.makedirs(os.path.dirname(rSettings["outputName"]))
+            if not os.path.exists(os.path.expandvars(os.path.dirname(rSettings["outputName"]))):
+                os.makedirs(os.path.expandvars(os.path.dirname(rSettings["outputName"])))
 
-            self.core.saveScene(versionUp=False, prismReq=False)
+            if self.stateManager.actionSaveDuringPub.isChecked():
+                self.core.saveScene(versionUp=False, prismReq=False)
+
             if self.core.getConfig("globals", "backupScenesOnPublish", config="project"):
-                self.core.entities.backupScenefile(os.path.dirname(rSettings["outputName"]), bufferMinutes=0)
+                self.core.entities.backupScenefile(os.path.expandvars(os.path.dirname(rSettings["outputName"])), bufferMinutes=0)
 
             if not self.gb_submit.isHidden() and self.gb_submit.isChecked():
                 handleMaster = "media" if self.isUsingMasterVersion() else False
@@ -1209,7 +1209,7 @@ class ImageRenderClass(object):
             return [self.state.text(0) + " - publish paused"]
         else:
             if updateMaster:
-                self.handleMasterVersion(outputName)
+                self.handleMasterVersion(os.path.expandvars(outputName))
 
             kwargs = {
                 "state": self,
@@ -1318,7 +1318,7 @@ class ImageRenderClass(object):
             "dlgpudevices": self.le_dlGPUdevices.text(),
             "lastexportpath": self.l_pathLast.text().replace("\\", "/"),
             "enablepasses": str(self.gb_passes.isChecked()),
-            "stateenabled": str(self.state.checkState(0)),
+            "stateenabled": self.core.getCheckStateValue(self.state.checkState(0)),
         }
         self.core.callback("onStateGetSettings", self, stateProps)
         return stateProps

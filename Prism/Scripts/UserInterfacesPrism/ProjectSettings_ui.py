@@ -39,7 +39,7 @@ class Ui_dlg_ProjectSettings(object):
         self.sa_general.setWidgetResizable(True)
         self.w_saGeneralContent = QWidget()
         self.w_saGeneralContent.setObjectName(u"w_saGeneralContent")
-        self.w_saGeneralContent.setGeometry(QRect(0, 0, 643, 652))
+        self.w_saGeneralContent.setGeometry(QRect(0, 0, 626, 713))
         self.verticalLayout_8 = QVBoxLayout(self.w_saGeneralContent)
         self.verticalLayout_8.setObjectName(u"verticalLayout_8")
         self.verticalLayout_8.setContentsMargins(0, 0, 0, 0)
@@ -418,6 +418,79 @@ class Ui_dlg_ProjectSettings(object):
 
 
         self.verticalLayout_9.addWidget(self.w_prjResolution)
+
+        self.w_curPversionPadding = QWidget(self.w_prjSettings)
+        self.w_curPversionPadding.setObjectName(u"w_curPversionPadding")
+        self.horizontalLayout_25 = QHBoxLayout(self.w_curPversionPadding)
+        self.horizontalLayout_25.setObjectName(u"horizontalLayout_25")
+        self.horizontalLayout_25.setContentsMargins(0, 0, 0, 0)
+        self.label_14 = QLabel(self.w_curPversionPadding)
+        self.label_14.setObjectName(u"label_14")
+
+        self.horizontalLayout_25.addWidget(self.label_14)
+
+        self.horizontalSpacer_26 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.horizontalLayout_25.addItem(self.horizontalSpacer_26)
+
+        self.sp_curPversionPadding = QSpinBox(self.w_curPversionPadding)
+        self.sp_curPversionPadding.setObjectName(u"sp_curPversionPadding")
+        self.sp_curPversionPadding.setMinimumSize(QSize(60, 0))
+        self.sp_curPversionPadding.setMinimum(1)
+        self.sp_curPversionPadding.setValue(4)
+
+        self.horizontalLayout_25.addWidget(self.sp_curPversionPadding)
+
+
+        self.verticalLayout_9.addWidget(self.w_curPversionPadding)
+
+        self.w_curPframePadding = QWidget(self.w_prjSettings)
+        self.w_curPframePadding.setObjectName(u"w_curPframePadding")
+        self.horizontalLayout_26 = QHBoxLayout(self.w_curPframePadding)
+        self.horizontalLayout_26.setObjectName(u"horizontalLayout_26")
+        self.horizontalLayout_26.setContentsMargins(0, 0, 0, 0)
+        self.label_15 = QLabel(self.w_curPframePadding)
+        self.label_15.setObjectName(u"label_15")
+
+        self.horizontalLayout_26.addWidget(self.label_15)
+
+        self.horizontalSpacer_27 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.horizontalLayout_26.addItem(self.horizontalSpacer_27)
+
+        self.sp_curPframePadding = QSpinBox(self.w_curPframePadding)
+        self.sp_curPframePadding.setObjectName(u"sp_curPframePadding")
+        self.sp_curPframePadding.setMinimumSize(QSize(60, 0))
+        self.sp_curPframePadding.setMinimum(1)
+        self.sp_curPframePadding.setValue(4)
+
+        self.horizontalLayout_26.addWidget(self.sp_curPframePadding)
+
+
+        self.verticalLayout_9.addWidget(self.w_curPframePadding)
+
+        self.w_expectedPrjPath_2 = QWidget(self.w_prjSettings)
+        self.w_expectedPrjPath_2.setObjectName(u"w_expectedPrjPath_2")
+        self.gridLayout_5 = QGridLayout(self.w_expectedPrjPath_2)
+        self.gridLayout_5.setObjectName(u"gridLayout_5")
+        self.gridLayout_5.setContentsMargins(0, 0, 0, 0)
+        self.horizontalSpacer_24 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout_5.addItem(self.horizontalSpacer_24, 0, 1, 1, 1)
+
+        self.e_version = QLineEdit(self.w_expectedPrjPath_2)
+        self.e_version.setObjectName(u"e_version")
+        self.e_version.setMinimumSize(QSize(300, 0))
+
+        self.gridLayout_5.addWidget(self.e_version, 0, 2, 1, 1)
+
+        self.l_expectedPrjPath_2 = QLabel(self.w_expectedPrjPath_2)
+        self.l_expectedPrjPath_2.setObjectName(u"l_expectedPrjPath_2")
+
+        self.gridLayout_5.addWidget(self.l_expectedPrjPath_2, 0, 0, 1, 1)
+
+
+        self.verticalLayout_9.addWidget(self.w_expectedPrjPath_2)
 
         self.w_reqPlugins = QWidget(self.w_prjSettings)
         self.w_reqPlugins.setObjectName(u"w_reqPlugins")
@@ -926,7 +999,7 @@ class Ui_dlg_ProjectSettings(object):
         self.buttonBox.accepted.connect(dlg_ProjectSettings.accept)
         self.buttonBox.rejected.connect(dlg_ProjectSettings.reject)
 
-        self.tw_settings.setCurrentIndex(1)
+        self.tw_settings.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(dlg_ProjectSettings)
@@ -967,6 +1040,12 @@ class Ui_dlg_ProjectSettings(object):
         self.l_prjResolution.setText(QCoreApplication.translate("dlg_ProjectSettings", u"Resolution:", None))
         self.chb_prjResolution.setText("")
         self.l_prjResolutionX.setText(QCoreApplication.translate("dlg_ProjectSettings", u"x", None))
+        self.label_14.setText(QCoreApplication.translate("dlg_ProjectSettings", u"Version Padding:", None))
+        self.label_15.setText(QCoreApplication.translate("dlg_ProjectSettings", u"Frame Padding:", None))
+#if QT_CONFIG(tooltip)
+        self.w_expectedPrjPath_2.setToolTip(QCoreApplication.translate("dlg_ProjectSettings", u"Specifies the version of the project. Prism can change the behavior of specific features to provide backwards compatibility with projects, which were created with older Prism versions.", None))
+#endif // QT_CONFIG(tooltip)
+        self.l_expectedPrjPath_2.setText(QCoreApplication.translate("dlg_ProjectSettings", u"Project Version:", None))
         self.b_reqPlugins.setText(QCoreApplication.translate("dlg_ProjectSettings", u"...", None))
         self.l_reqPlugins.setText(QCoreApplication.translate("dlg_ProjectSettings", u"Required Plugins:", None))
         self.b_expectedPrjPath.setText(QCoreApplication.translate("dlg_ProjectSettings", u"...", None))

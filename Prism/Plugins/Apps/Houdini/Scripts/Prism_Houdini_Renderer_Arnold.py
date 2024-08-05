@@ -361,4 +361,5 @@ def getAssOutputPath(origin, renderOutputPath):
         os.path.dirname(renderOutputPath), "_ass", os.path.basename(renderOutputPath)
     )
     jobOutputFile = os.path.splitext(jobOutputFile)[0] + ".ass"
+    jobOutputFile = jobOutputFile.replace("\\", "/")
     return jobOutputFile

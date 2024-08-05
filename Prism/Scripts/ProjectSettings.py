@@ -895,6 +895,9 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
             self.sp_prjResolutionWidth.value(),
             self.sp_prjResolutionHeight.value(),
         ]
+        cData["globals"]["versionPadding"] = self.sp_curPversionPadding.value()
+        cData["globals"]["framePadding"] = self.sp_curPframePadding.value()
+        cData["globals"]["prism_version"] = self.e_version.text()
         cData["globals"]["useMasterVersion"] = self.chb_curPuseMaster.isChecked()
         cData["globals"][
             "useMasterRenderVersion"
@@ -1093,6 +1096,12 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
         if "resolution" in gblData:
             self.sp_prjResolutionWidth.setValue(gblData["resolution"][0])
             self.sp_prjResolutionHeight.setValue(gblData["resolution"][1])
+        if "versionPadding" in gblData:
+            self.sp_curPversionPadding.setValue(gblData["versionPadding"])
+        if "framePadding" in gblData:
+            self.sp_curPframePadding.setValue(gblData["framePadding"])
+        if "prism_version" in gblData:
+            self.e_version.setText(gblData["prism_version"])
         if "useMasterVersion" in gblData:
             self.chb_curPuseMaster.setChecked(gblData["useMasterVersion"])
         if "useMasterRenderVersion" in gblData:
@@ -1160,7 +1169,7 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
             if configData is None:
                 configData = self.projectData
 
-            departments = self.core.projects.getAssetDepartments(configData=configData)
+            departments = self.core.projects.getAssetDepartments(configData=configData) or []
 
         self.tw_assetDepartments.setRowCount(0)
         for dep in departments:
@@ -1185,7 +1194,7 @@ class ProjectSettings(QDialog, ProjectSettings_ui.Ui_dlg_ProjectSettings):
             if configData is None:
                 configData = self.projectData
 
-            departments = self.core.projects.getShotDepartments(configData=configData)
+            departments = self.core.projects.getShotDepartments(configData=configData) or []
 
         self.tw_shotDepartments.setRowCount(0)
         for dep in departments:
